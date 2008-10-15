@@ -1,0 +1,3 @@
+#!/bin/sh
+
+./simple_client -d | aplay -r 44100 -f FLOAT_LE

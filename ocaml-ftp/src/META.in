@@ -1,0 +1,6 @@
+name="Ftp"
+version="@VERSION@"
+description="OCaml library for accessing files via ftp"
+requires="unix str"
+archive(byte) = "ftp.cma"
+archive(native) = "ftp.cmxa"

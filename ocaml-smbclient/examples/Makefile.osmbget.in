@@ -1,0 +1,8 @@
+OCAML_LIB_SMBCLIENT = @I_SMBCLIENT@
+
+SOURCES = osmbget.ml
+RESULT = osmbget
+LIBS = unix smbclient
+INCDIRS = $(OCAML_LIB_SMBCLIENT)
+
+include OCamlMakefile

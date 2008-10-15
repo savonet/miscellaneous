@@ -1,0 +1,6 @@
+name="Shout"
+version="@VERSION@"
+description="Ocaml bindings to libshout2"
+requires=""
+archive(byte) = "shout.cma"
+archive(native) = "shout.cmxa"

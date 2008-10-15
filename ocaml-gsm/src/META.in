@@ -1,0 +1,6 @@
+name="gsm"
+version="@VERSION@"
+description="OCaml bindings for libgsm"
+requires="@requires@"
+archive(byte)="gsm.cma"
+archive(native)="gsm.cmxa"

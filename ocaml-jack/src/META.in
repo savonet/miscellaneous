@@ -1,0 +1,6 @@
+name="jack"
+version="@VERSION@"
+description="OCaml bindings for jack"
+requires=""
+archive(byte)="jack.cma"
+archive(native)="jack.cmxa"

@@ -1,0 +1,233 @@
+#!@liquidsoap@
+
+# No loggin for now
+set("log.stdout",false)
+set("log.file",false)
+
+# Stream ripper, implemented in liquidsoap
+version = "0.1"
+
+# Detect available outputs
+outputs = [
+%ifdef output.file.vorbis
+"vorbis",
+%endif
+%ifdef output.file.mp3
+"mp3",
+%endif
+"wav"
+]
+
+outs = string.concat(separator=", ", outputs)
+usage = "streamliqueur [ -o /path/to/output/dir ] [ -f format ] [ -p ] [ -t timeout ] http://... " ^
+%ifdef input.lastfm
+"| lastfm://... " ^
+%endif
+"]
+Where:
+ * -o is mandatory
+ * -f is mandatory, possible values: #{outs}
+ * -p starts local playout  while ripping (default: no)
+ * -t specify what timeout resets the ripping state (default: 10)"
+
+# Initial message
+print("Starting streamliqueur version #{version}")
+
+# Get debugging option
+if getopt("-d") == "1" then
+  print("Enabling debug messages.")
+  set("log.stdout",true)
+  set("log.level",4)
+end
+
+# Get playout option
+play = getopt("-p") == "1"
+if play then
+  print("Will play the stream.")
+end
+
+# Get btime option
+btime = float_of_string(getopt(default="10","-t"))
+
+stop = false
+# Get format option
+format = getopt(default="false","-f")
+stop = 
+  if format == "false" then 
+    print("No destination format specified.")
+    true
+  elsif not list.mem(format,outputs) then
+    print("Unknown format: #{format}")
+    true
+  else
+    print("Output using #{format} format.")
+    stop
+  end
+
+# Get output directory
+dest = getopt(default="false","-o")
+stop = 
+  if dest == "false" then
+    print("No destination directory specified.")
+    true
+  elsif not test_process("test -d #{quote(dest)}") then
+    print("Destination directory #{dest} does not exist.")
+    true
+  else
+    stop
+  end
+
+# Get arguments from command line
+uri = argv(default="",1)
+
+# Current stream state:
+# -1: Just started
+# 0: Didn't get begining of song
+# 1: Got begining
+x = string.ref("0")
+def get_state() = 
+  x = fst(x)
+  int_of_string(x())
+end
+def set_state(v) = 
+ x = snd(x)
+ x(string_of(v))
+end
+
+def source(uri) = 
+  # Test http://
+  if string.match(pattern="^http://",uri) then
+    print("Using HTTP stream: #{uri}")
+    # Unreliable initial state
+    set_state("-1")
+    input.http(uri)
+%ifdef input.lastfm
+  # Test for lastfm:// streams
+  elsif string.match(pattern="^lastfm://",uri) then
+    print("Using lastfm stream: #{uri}")
+    input.lastfm(uri)
+%endif
+  else
+    print("Unknown audio source : #{uri}")
+    shutdown()
+    blank()
+  end
+end
+
+# Latest title ref
+extension = 
+  if format == "mp3" then
+    ".mp3"
+  elsif format == "vorbis" then
+    ".ogg"
+  elsif format == "wav" then
+    ".wav"
+  else
+     # Avoided at option parsing.. 
+     ".raw"
+  end
+filename = '$(if $(artist),"$(artist) - ","")$(if $(title),"$(title)","Unknown Title")' ^ extension
+x = string.ref("")
+get_filename = fst(x)
+set_filename = snd(x)
+
+def new_file(m)
+  oldfile = get_filename()
+  state = get_state()
+  filename = filename % m
+  filename = 
+    string.replace(pattern="/",fun (_) -> "-",filename)
+  state = 
+    if filename == oldfile then
+      # We can suspect a stream inconsistency
+      (-1)
+    else
+      state
+  end
+  if state == 1 then
+    print("#{oldfile} finished sucessfully !")
+    old = dest ^ "/incomplete/" ^ oldfile
+    new = dest ^ "/finished/" ^ oldfile
+    system("mv #{quote(old)} #{quote(new)}")
+  end
+  if state != (-1) then
+    print("Got new file: #{filename}")
+  else
+    print("Got partial file: #{filename}")
+  end
+  set_filename(filename)
+  if state < 1 then
+    set_state(state+1)
+  end
+end
+
+x = string.ref(string_of(true))
+def is_failed() = 
+  get = fst(x)
+  bool_of_string(get())
+end
+def set_failed(v) =
+  set = snd(x)
+  set(string_of(v))
+end
+default = blank(id="blank")
+def transition(a,b)
+  if source.id(b) == "blank" then
+    print("Stream unavailable (no connection?)..")
+    if string.match(pattern="^http://",uri) then
+      # This is clearly an issue
+      # for lastfm, this cannot be sure,
+      # getting next file might be too long
+      set_state(-1)
+    end
+    set_failed(true)
+  else
+    set_failed(false)
+    ignore(execute("dump.start"))
+  end
+  b
+end
+
+if stop then
+  print("Usage: #{usage}")
+  print("Shutting down..")
+  fail()
+else
+  print("Starting ripping to #{dest}")
+  system("mkdir -p #{dest}/incomplete")
+  system("mkdir -p #{dest}/finished")
+  source = on_metadata(new_file,source(uri))
+  source = fallback(track_sensitive=false,[source,default],transitions=[transition,transition])
+  def too_blank ()
+    if is_failed() then
+      print("Stream timeout (#{btime} sec), stopping ripping..")
+      set_state(-1)
+      ignore(execute("dump.stop"))
+    end
+  end
+  source = on_blank(too_blank,length=btime,source)
+  filename = dest ^ "/incomplete/" ^ filename
+  source = 
+    if play then
+      out(source)
+    else
+      source
+    end
+  if false then
+    fail ()
+  %ifdef output.file.vorbis
+  elsif format == "vorbis" then
+    output.file.vorbis(id="dump",append=true,reopen_on_metadata=true,filename,source)
+  %endif
+  %ifdef output.file.mp3
+  elsif format == "mp3" then
+    output.file.mp3(id="dump",append=true,reopen_on_metadata=true,filename,source)
+  %endif
+  elsif format == "wav" then
+    output.file.wav(id="dump",append=true,reopen_on_metadata=true,filename,source)
+  else
+    print("Unknown format: #{format}")
+    shutdown ()
+    fail ()
+  end
+end

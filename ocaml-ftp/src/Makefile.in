@@ -1,0 +1,45 @@
+# Copyright 2003 Savonet team
+
+OCAMLMAKEFILE = OCamlMakefile
+
+OCAMLFIND = @OCAMLFIND@
+OCAMLFIND_LDCONF= @OCAMLFIND_LDCONF@
+OCAMLC = @OCAMLC@
+OCAMLOPT = @OCAMLOPT@
+BEST = @BEST@
+OCAMLMKTOP = @OCAMLMKTOP@
+OCAMLCP = @OCAMLCP@
+OCAMLDEP = @OCAMLDEP@
+OCAMLLEX = @OCAMLLEX@
+OCAMLYACC = @OCAMLYACC@
+OCAMLDOC = @OCAMLDOC@
+LATEX = @LATEX@
+DVIPS = @DVIPS@
+PS2PDF = @PS2PDF@
+OCAMLLIBPATH = @CAMLLIBPATH@
+
+SOURCES = ftp.mli ftp.ml
+RESULT = ftp
+LIBINSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmxa *.cmx *.a *.so)
+OCAMLLDFLAGS =
+LIBS = unix str
+
+all: $(BEST)
+
+byte: byte-code-library
+
+opt: native-code-library
+
+install: libinstall
+
+uninstall: libuninstall
+
+update: uninstall install
+
+# TODO: for tests, remove
+
+test: clean all test.cmo
+	$(OCAMLC) -g -custom ftp.cma test.cmo -o test -I .
+	rm -f test.cmo test.cmi test.cmx
+
+-include $(OCAMLMAKEFILE)

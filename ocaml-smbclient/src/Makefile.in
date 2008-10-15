@@ -1,0 +1,56 @@
+# Copyright 2003 Savonet team
+# libsmbclient 2 bindings for OCaml.
+#
+# by Samuel Mimram
+
+# $Id$
+
+
+OCAMLMAKEFILE = OCamlMakefile
+
+OCAMLFIND = @OCAMLFIND@
+OCAMLFIND_LDCONF = @OCAMLFIND_LDCONF@
+OCAMLC = @OCAMLC@
+OCAMLOPT = @OCAMLOPT@
+BEST = @BEST@
+OCAMLMKTOP = @OCAMLMKTOP@
+OCAMLCP = @OCAMLCP@
+OCAMLDEP = @OCAMLDEP@
+OCAMLLEX = @OCAMLLEX@
+OCAMLYACC = @OCAMLYACC@
+OCAMLDOC = @OCAMLDOC@
+LATEX = @LATEX@
+DVIPS = @DVIPS@
+PS2PDF = @PS2PDF@
+OCAMLLIBPATH = @CAMLLIBPATH@
+
+SOURCES = smbclient_stubs.c smbclient.mli smbclient.ml
+RES_CLIB_SUF = _stubs
+RESULT = smbclient
+LIBINSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmxa *.cmx *.a *.so)
+CC = @CC@
+CFLAGS = @CFLAGS@
+CPPFLAGS = @CPPFLAGS@
+CLIBS := @LIBS@
+CLIBS := $(CLIBS:-l%=%)
+
+all: $(BEST)
+byte: bcl
+opt: ncl
+
+install: libinstall
+
+uninstall: libuninstall
+
+update: uninstall install
+
+test: clean dcl test.ml #TODO: remove
+	rm -f test.cmi test.cmo test
+	$(OCAMLC) -g -c test.ml
+	$(OCAMLC) -custom -ccopt "$(CFLAGS)" -ccopt -L. -cclib -lsmbclient -g smbclient.cma test.cmo -o test
+
+ctest: clean dcl ctest.o
+	rm -f ctest
+	$(CC) $(CFLAGS) $(LDFLAGS) @LIBS@ ctest.o -o ctest
+
+include $(OCAMLMAKEFILE)

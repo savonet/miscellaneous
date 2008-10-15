@@ -1,0 +1,6 @@
+name="musicbrainz"
+version="@VERSION@"
+description="OCaml bindings for libmusicbrainz"
+requires=""
+archive(byte)="musicbrainz.cma"
+archive(native)="musicbrainz.cmxa"

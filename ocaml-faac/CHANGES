@@ -1,0 +1,8 @@
+0.1.1 (15-04-2008)
+=====
+* More portable invokation of make
+* Now installs .cmx file too
+
+0.1.0 (17-10-2007)
+=====
+* Initial release

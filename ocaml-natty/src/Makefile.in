@@ -1,0 +1,41 @@
+# Copyright (C) 2005-2006 Savonet team
+# OCaml-natty bindings for OCaml.
+#
+# by Samuel Mimram and Romain Beauxis
+
+# $Id: Makefile.in 2383 2006-04-09 16:21:04Z smimram $
+
+OCAMLMAKEFILE = OCamlMakefile
+
+OCAMLFIND = @OCAMLFIND@
+REAL_OCAMLFIND = $(OCAMLFIND)
+OCAML_DEP_PACKAGES = -package bitstring,bitstring.syntax -syntax bitstring.syntax
+OCAML_FIND_PACKAGES = $(OCAML_DEP_PACKAGES) -linkpkg
+OCAMLFIND_LDCONF = @OCAMLFIND_LDCONF@
+BEST = @BEST@
+OCAMLC = ocamlc
+OCAMLOPT = ocamlopt
+OCAMLMKTOP = ocamlmktop
+OCAMLCP = ocamlcp
+OCAMLDEP = ocamldep
+OCAMLDOC = ocamldoc
+
+SOURCES = natty.ml natty.mli
+RESULT = natty
+OCAMLDOCFLAGS = -stars
+LIBINSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmxa *.cmx *.a *.so)
+OCAMLDOCFLAGS = -I `ocamlfind -query bitstring`
+
+all: $(BEST)
+
+byte: byte-code-library
+
+opt: native-code-library
+
+install: libinstall
+
+uninstall: libuninstall
+
+update: uninstall install
+
+-include $(OCAMLMAKEFILE)

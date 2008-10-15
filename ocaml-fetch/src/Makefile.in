@@ -1,0 +1,50 @@
+# Copyright (c) 2003 by the Savonet team
+#
+# Universal file fetcher for OCaml.
+#
+# by Samuel Mimram
+
+# $Id$
+
+OCAMLMAKEFILE = OCamlMakefile
+
+OCAMLFIND = @OCAMLFIND@
+OCAMLFIND_LDCONF= @OCAMLFIND_LDCONF@
+OCAMLC = @OCAMLC@
+OCAMLOPT = @OCAMLOPT@
+BEST = @BEST@
+OCAMLMKTOP = @OCAMLMKTOP@
+OCAMLCP = @OCAMLCP@
+OCAMLDEP = @OCAMLDEP@
+OCAMLLEX = @OCAMLLEX@
+OCAMLYACC = @OCAMLYACC@
+OCAMLDOC = @OCAMLDOC@
+LATEX = @LATEX@
+DVIPS = @DVIPS@
+PS2PDF = @PS2PDF@
+OCAMLLIBPATH = @CAMLLIBPATH@
+
+OCAML_LIB_FTP = @OCAML_LIB_FTP@
+OCAML_LIB_SMBCLIENT = @OCAML_LIB_SMBCLIENT@
+
+PROTOCOLS = @PROTOCOLS@
+SOURCES = proto.ml fetch.mli fetch.ml $(PROTOCOLS:%=%_fetch.ml)
+RESULT = fetch
+LIBINSTALL_FILES = $(wildcard *.a *.mli *.cma *.cmxa) fetch.cmi
+LIBS = @OCAML_LIBS@
+INCDIRS = $(OCAML_LIB_FTP) $(OCAML_LIB_SMBCLIENT)
+OCAMLLDFLAGS += -linkall
+OCAMLDOCFLAGS = -stars
+
+all: $(BEST)
+
+byte: bcl
+opt: ncl
+
+install: libinstall
+
+uninstall: libuninstall
+
+update: uninstall install
+
+include $(OCAMLMAKEFILE)

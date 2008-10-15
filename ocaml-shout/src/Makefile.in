@@ -1,0 +1,51 @@
+# Copyright 2003-2006 Savonet team
+# libshout 2 bindings for OCaml.
+#
+# by Samuel Mimram
+
+# $Id$
+
+
+OCAMLMAKEFILE = OCamlMakefile
+
+OCAMLFIND = @OCAMLFIND@
+OCAMLFIND_LDCONF = @OCAMLFIND_LDCONF@
+OCAMLC = @OCAMLC@
+OCAMLOPT = @OCAMLOPT@
+OCAMLMKTOP = @OCAMLMKTOP@
+OCAMLCP = @OCAMLCP@
+OCAMLDEP = @OCAMLDEP@
+OCAMLLEX = @OCAMLLEX@
+OCAMLYACC = @OCAMLYACC@
+OCAMLDOC = @OCAMLDOC@
+LATEX = @LATEX@
+DVIPS = @DVIPS@
+PS2PDF = @PS2PDF@
+OCAMLLIBPATH = @CAMLLIBPATH@
+
+SOURCES = shout_stubs.c shout.mli shout.ml
+RES_CLIB_SUF = _stubs
+RESULT = shout
+LIBINSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmxa *.cmx *.a *.so)
+ACLIBS = @LIBS@ @libshout_LIBS@
+CLIBS = $(ACLIBS:-l%=%)
+LDFLAGS = @LDFLAGS@ @libshout_LDFLAGS@
+CC = @CC@
+CFLAGS = @CFLAGS@ @libshout_CFLAGS@
+CPPFLAGS = @CPPFLAGS@
+BEST = @BEST@
+
+
+all: $(BEST)
+
+byte: byte-code-library
+
+opt: native-code-library
+
+install: libinstall
+
+uninstall: libuninstall
+
+update: uninstall install
+
+-include $(OCAMLMAKEFILE)

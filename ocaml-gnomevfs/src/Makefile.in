@@ -1,0 +1,26 @@
+
+
+SOURCES = gnomevfs_stubs.c gnomevfs.mli gnomevfs.ml
+RESULT = gnomevfs
+
+OCAMLMAKEFILE = OCamlMakefile
+OCAMLFIND = ocamlfind
+OCAMLC = ocamlc.opt
+OCAMLOPT = ocamlopt.opt
+BEST = byte opt
+
+CC = @CC@
+CFLAGS = @CFLAGS@
+CPPFLAGS = @CPPFLAGS@
+CLIBS := @LIBS@
+CLIBS := $(CLIBS:-l%=%)
+
+all: $(BEST)
+
+byte: bcl
+
+opt: ncl
+
+install: libinstall
+
+include $(OCAMLMAKEFILE)

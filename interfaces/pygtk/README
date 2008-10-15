@@ -1,0 +1,19 @@
+This interface demonstrates communicating with a sample liq client to 
+make requests. This demo is a wip and will form the framework for major changes in rocket.
+
+The key features of this demo is it's use of the pygtk threading as demonstrated on http://www.johnstowers.co.nz,
+with the goal within rocket to have a multithreading manager for communicating with the liq daemon.
+
+You'll first need to create a suitable client (ie liq.py) and then run the client (client.py), you will
+require two terminals for this.
+
+Ie:
+
+python liq.py - In the first terminal
+python client.py - In the second terminal
+
+Within the client you can:
+*) See what's in the queue
+*) Set the player on CUE or PLAY
+*) Insert new tracks into the queue
+

@@ -1,0 +1,23 @@
+# $Id$
+
+SOURCES = ufetch.ml
+RESULT = ufetch
+LIBS = unix str smbclient ftp fetch
+INCDIRS = @I_SMBCLIENT@ @I_FTP@ @I_FETCH@
+OCAMLLDFLAGS += -linkall
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = @bindir@
+mandir = @mandir@
+DESTDIR = $(bindir)
+
+all: byte-code
+
+opt: native-code
+
+install: all
+	install ufetch $(DESTDIR)
+	install ufetch.1 $(mandir)/man1
+
+-include OCamlMakefile

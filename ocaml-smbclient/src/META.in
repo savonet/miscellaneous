@@ -1,0 +1,6 @@
+name="Smbclient"
+version="@VERSION@"
+description="Ocaml bindings to libsmbclient"
+requires=""
+archive(byte) = "smbclient.cma"
+archive(native) = "smbclient.cmxa"

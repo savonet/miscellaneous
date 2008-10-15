@@ -1,0 +1,88 @@
+
+type error =
+    @GNOME_VFS_ERRORS@
+(** The type of error codes.
+  * Automatically generated from libgnomevfs/gnome-vfs-result.h
+  *)
+
+exception Gnomevfs_error of error
+let _ = Callback.register_exception "Gnomevfs.Gnomevfs_error" (Gnomevfs_error NOT_FOUND)
+
+external error_message : error -> string = "ocaml_gnomevfs_error_msg"
+
+type handle
+
+type uri = string
+
+type open_mode =
+    OPEN_READ
+  | OPEN_WRITE
+  | OPEN_RANDOM
+
+external openfile : uri -> open_mode list -> handle = "ocaml_gnomevfs_open"
+
+external create : uri -> open_mode list -> bool -> int -> handle = "ocaml_gnomevfs_create"
+
+external close : handle -> unit = "ocaml_gnomevfs_close"
+
+external unlink : uri -> unit = "ocaml_gnomevfs_unlink"
+
+external move : uri -> uri -> bool -> unit = "ocaml_gnomevfs_move"
+
+external check_same_fs : uri -> uri -> bool = "ocaml_gnomevfs_check_same_fs"
+
+type seek_position =
+    SEEK_START
+  | SEEK_CURRENT
+  | SEEK_END
+
+external read : handle -> string -> int -> int -> int = "ocaml_gnomevfs_read"
+
+external write : handle -> string -> int -> int -> int = "ocaml_gnomevfs_write"
+
+external seek : handle -> seek_position -> int -> unit = "ocaml_gnomevfs_seek"
+
+external tell : handle -> int = "ocaml_gnomevfs_tell"
+
+type dir_handle
+
+external make_directory : uri -> int -> unit = "ocaml_gnomevfs_make_directory"
+
+external remove_directory : uri -> unit = "ocaml_gnomevfs_remove_directory"
+
+external directory_open : uri -> unit -> dir_handle = "ocaml_gnomevfs_directory_open"                                     
+
+type file_type =
+    FILE_TYPE_UNKNOWN
+  | FILE_TYPE_REGULAR
+  | FILE_TYPE_DIRECTORY
+  | FILE_TYPE_FIFO
+  | FILE_TYPE_SOCKET
+  | FILE_TYPE_CHARACTER_DEVICE
+  | FILE_TYPE_BLOCK_DEVICE
+  | FILE_TYPE_SYMBOLIC_LINK
+
+type file_info = {
+  name : string;
+  valid_fields : int (* TODO *);
+  file_type : file_type;
+  permissions : int (* TODO *);
+  flags : int (* TODO *);
+  device : int;
+  inode : int;
+  link_count : int;
+  uid : int;
+  gid : int;
+  block_count : int;
+  io_block_size : int;
+  atime : float;
+  mtime : float;
+  ctime : float;
+  symlink_name : string option;
+  mime_type : string option;
+  refcount : int;
+}
+                                           
+external directory_read_next : dir_handle -> file_info = "ocaml_gnomevfs_directory_read_next"
+
+external directory_close : dir_handle -> unit = "ocaml_gnomevfs_directory_close"

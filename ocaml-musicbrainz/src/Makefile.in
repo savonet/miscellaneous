@@ -1,0 +1,55 @@
+# Copyright (C) 2005-2006 Savonet team
+# libmusicbrainz bindings for OCaml.
+#
+# by Samuel Mimram and Romain Beauxis
+
+# $Id: Makefile.in 2383 2006-04-09 16:21:04Z smimram $
+
+OCAMLMAKEFILE = OCamlMakefile
+
+OCAMLFIND = @OCAMLFIND@
+OCAMLFIND_LDCONF = @OCAMLFIND_LDCONF@
+OCAMLC = @OCAMLC@
+OCAMLOPT = @OCAMLOPT@
+BEST = @BEST@
+OCAMLMKTOP = @OCAMLMKTOP@
+OCAMLCP = @OCAMLCP@
+OCAMLDEP = @OCAMLDEP@
+OCAMLLEX = @OCAMLLEX@
+OCAMLYACC = @OCAMLYACC@
+OCAMLDOC = @OCAMLDOC@
+LATEX = @LATEX@
+DVIPS = @DVIPS@
+PS2PDF = @PS2PDF@
+OCAMLLIBPATH = @CAMLLIBPATH@
+
+SOURCES = musicbrainz_stubs.c musicbrainz.mli musicbrainz.ml
+RESULT = musicbrainz
+OCAMLDOCFLAGS = -stars
+LIBINSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmxa *.cmx *.a *.so)
+ACLIBS = @LIBS@ @libmusicbrainz_LIBS@
+LDFLAGS = @LDFLAGS@ @libmusicbrainz_LDFLAGS@
+CLIBS = $(ACLIBS:-l%=%)
+CC = @CC@
+CFLAGS = @CFLAGS@ @libmusicbrainz_CFLAGS@ -Wall -DCAML_NAME_SPACE
+CPPFLAGS = @CPPFLAGS@
+TRASH = musicbrainz.ml
+
+all: $(BEST)
+
+byte: musicbrainz.ml byte-code-library
+
+opt: musicbrainz.ml native-code-library
+
+musicbrainz.ml: musicbrainz.ml.in
+	rm -f $@
+	$(CC) -E -x c -P $< > $@
+	chmod -w $@
+
+install: libinstall
+
+uninstall: libuninstall
+
+update: uninstall install
+
+-include $(OCAMLMAKEFILE)

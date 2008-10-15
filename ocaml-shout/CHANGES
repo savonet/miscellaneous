@@ -1,0 +1,46 @@
+0.2.6 (14-04-2008)
+=====
+* Install .cmx file
+
+0.2.5 (12-12-2007)
+=====
+* Added shout_close when the garbage collector cleans shout_t
+
+0.2.4 (17-10-2007)
+=====
+* Improved configure support
+
+0.2.3 (06-06-2007)
+=====
+* Fix a possible bug in set_metadata.
+
+0.2.2 (12-11-2006)
+=====
+* More portable configure script.
+* Optimization of camlparam declarations.
+
+0.2.1 (07-07-2006)
+=====
+* Hardened the OCaml bindings policy thanks to Saffire.
+* Correctly allocating custom block for shout values.
+* Better error checking, code cleanup.
+
+0.2.0 (20-04-2005)
+=====
+* Updated OCamlMakefile and improved build system.
+* Added caml_{enter,leave}_blocking_section() around shout_{send,send_raw,sync}().
+* Storing values in fields with Store_field instead of Field = .
+* Using CAML_NAME_SPACE functions.
+
+0.1.1 (30-06-2004)
+=====
+* Completed the mli documentation.
+* Added a function to send the "multicast-ip" parameter to icecast.
+* Raising an exception when shout_new returns a NULL pointer.
+* set_public / get_public now take / return a boolean instead of an integer.
+* Handling filenames of length < 4 chars in shoutfile.
+* Printing libshout version in shoutfile.
+
+0.1.0 (05-02-2004)
+=====
+* Initial release.

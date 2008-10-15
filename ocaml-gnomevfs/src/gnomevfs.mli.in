@@ -1,0 +1,88 @@
+
+type error =
+    @GNOME_VFS_ERRORS@
+(** The type of error codes.
+  * Automatically generated from libgnomevfs/gnome-vfs-result.h
+  *)
+
+exception Gnomevfs_error of error
+
+val error_message : error -> string
+
+type handle
+
+type uri = string
+
+type open_mode =
+  | OPEN_READ
+  | OPEN_WRITE
+  | OPEN_RANDOM
+
+val openfile : uri -> open_mode list -> handle
+
+val create : uri -> open_mode list -> bool -> int -> handle
+
+val close : handle -> unit
+
+val unlink : uri -> unit
+
+val move : uri -> uri -> bool -> unit
+
+val check_same_fs : uri -> uri -> bool
+
+type seek_position =
+    SEEK_START
+  | SEEK_CURRENT
+  | SEEK_END
+
+val read : handle -> string -> int -> int -> int
+
+val write : handle -> string -> int -> int -> int
+
+val seek : handle -> seek_position -> int -> unit
+
+val tell : handle -> int
+
+
+type dir_handle
+
+val make_directory : uri -> int -> unit
+
+val remove_directory : uri -> unit
+
+val directory_open : uri -> unit -> dir_handle
+
+type file_type =
+    FILE_TYPE_UNKNOWN
+  | FILE_TYPE_REGULAR
+  | FILE_TYPE_DIRECTORY
+  | FILE_TYPE_FIFO
+  | FILE_TYPE_SOCKET
+  | FILE_TYPE_CHARACTER_DEVICE
+  | FILE_TYPE_BLOCK_DEVICE
+  | FILE_TYPE_SYMBOLIC_LINK
+
+type file_info = {
+  name : string;
+  valid_fields : int (* TODO *);
+  file_type : file_type;
+  permissions : int (* TODO *);
+  flags : int (* TODO *);
+  device : int;
+  inode : int;
+  link_count : int;
+  uid : int;
+  gid : int;
+  block_count : int;
+  io_block_size : int;
+  atime : float;
+  mtime : float;
+  ctime : float;
+  symlink_name : string option;
+  mime_type : string option;
+  refcount : int;
+}
+
+val directory_read_next : dir_handle -> file_info
+
+val directory_close : dir_handle -> unit

@@ -1,0 +1,126 @@
+#include <musicbrainz/queries.h>
+
+exception Error of int
+
+let () =
+  Callback.register_exception "musicbrainz_exn_error" (Error 0)
+
+type t
+
+external create : unit -> t = "ocaml_musicbrainz_new"
+
+external version : t -> int * int * int = "ocaml_musicbrainz_get_version"
+
+external set_server : t -> string -> int -> unit = "ocaml_musicbrainz_set_server"
+
+external set_debug : t -> bool -> unit = "ocaml_musicbrainz_set_debug"
+
+external set_proxy : t -> string -> int -> unit = "ocaml_musicbrainz_set_proxy"
+
+external authenticate : t -> string -> string -> unit = "ocaml_musicbrainz_authenticate"
+
+external set_device : t -> string -> unit = "ocaml_musicbrainz_set_device"
+
+external use_utf8 : t -> bool -> unit = "ocaml_musicbrainz_use_utf8"
+
+external set_depth : t -> int -> unit = "ocaml_musicbrainz_set_depth"
+
+external set_max_items : t -> int -> unit = "ocaml_musicbrainz_set_max_items"
+
+external query : t -> string -> unit = "ocaml_musicbrainz_query"
+
+external query_with_args : t -> string -> string array -> unit = "ocaml_musicbrainz_query_with_args"
+let query_with_args mb query args = query_with_args mb query (Array.of_list args)
+
+external select : t -> string -> unit = "ocaml_musicbrainz_select"
+
+external select1 : t -> string -> int -> unit = "ocaml_musicbrainz_select1"
+
+external get_result_int : t -> string -> int = "ocaml_musicbrainz_get_result_int"
+
+external get_result_data : t -> string -> string = "ocaml_musicbrainz_get_result_data"
+
+external get_id_from_url : t -> string -> string = "ocaml_musicbrainz_get_id_from_url"
+
+external get_mp3_info : t -> string -> int * int * int * int = "ocaml_get_mp3_info"
+
+module Query =
+struct
+  (** Select queries. *)
+  module S =
+  struct
+    let rewind = MBS_Rewind
+
+    let select_artist = MBS_SelectArtist
+
+    let select_track = MBS_SelectTrack
+  end
+
+  let get_num_artists = MBE_GetNumArtists
+
+  let get_num_tracks = MBE_GetNumTracks
+
+  (* Artist queries. *)
+  let artist_get_artist_name = MBE_ArtistGetArtistName
+  let artist_get_artist_sort_name = MBE_ArtistGetArtistSortName
+  let artist_get_artist_id = MBE_ArtistGetArtistId
+  let artist_get_album_name = MBE_ArtistGetAlbumName
+  let artist_get_album_id = MBE_ArtistGetAlbumId
+
+
+  external find_artist_by_name : unit -> string = "ocaml_musicbrainz_find_artist_by_name"
+  let find_artist_by_name = find_artist_by_name ()
+
+  (* TRM queries. *)
+  external track_info_from_TRM_id : unit -> string = "ocaml_musicbrainz_track_info_from_TRM_id"
+  let track_info_from_TRM_id = track_info_from_TRM_id ()
+
+  external quick_track_info_from_track_id : unit -> string = "ocaml_musicbrainz_quick_track_info_from_track_id"
+  let quick_track_info_from_track_id = quick_track_info_from_track_id ()
+end
+
+(* TRM *)
+
+module TRM =
+struct
+  type t
+
+  external create : unit -> t = "ocaml_trm_new"
+
+  external set_proxy : t -> string -> int -> unit = "ocaml_trm_set_proxy"
+
+  external set_pcm_data_info : t -> int -> int -> int -> unit = "ocaml_trm_set_pcm_data_info"
+
+  external set_song_length : t -> int -> unit = "ocaml_trm_set_song_length"
+
+  external generate_signature : t -> string -> int -> int -> bool = "ocaml_trm_generate_signature"
+
+  external finalize_signature : t -> string option -> string = "ocaml_trm_finalize_signature"
+
+  let get_signature ?trm ?duration freq chans bits feed =
+    let trm =
+      match trm with
+        | None -> create ()
+        | Some trm -> trm
+    in
+    let buf = ref "" in
+    let ret = ref false in
+      set_pcm_data_info trm freq chans bits;
+      (
+        match duration with
+          | Some d -> set_song_length trm d
+          | None -> ()
+      );
+      buf := feed ();
+      while String.length !buf <> 0 && not !ret do
+        ret := generate_signature trm !buf 0 (String.length !buf);
+        buf := feed ()
+      done;
+      finalize_signature trm None
+
+  let get_mp3_signature mb fname feed =
+    let duration, freq, chans, bits = get_mp3_info mb fname in
+      get_signature ~duration:(duration / 1000) freq chans bits feed
+
+  external convert_sig_to_ascii : t -> string -> string = "ocaml_trm_convert_sig_to_ascii"
+end

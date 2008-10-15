@@ -1,0 +1,60 @@
+OCaml-Smbclient - OCaml functions for accessing files via samba
+==============================================================
+
+Author: Samuel Mimram <samuel.mimram@ens-lyon.org>
+Email: savonet-users@lists.sourceforge.net
+Homepage: http://savonet.sourceforge.net/
+
+Copyright (c) 2003-2004 the Savonet Team.
+
+
+Disclamer / warning
+===================
+To compile this library you will need at least OCaml 3.07+14 or a patched
+libsmbclient because of functions which had the same name in OCaml and samba:
+"string_set" and "sys_open" and were thus conflicting. They have been renamed
+in recent versions of OCaml. With older versions of OCaml any attempt to use
+this library will lead to a segfault...
+
+The implementation of the library is still very incomplete!
+Patches are welcome :)
+
+
+Dependencies
+============
+To build this library you need to have OCaml 3.07+14.
+
+
+Installation
+============
+To compile the program type:
+
+./configure
+make
+
+(you can set specific build options with the configure script, see
+./configure --help) then, to install it, type as root:
+
+make install
+
+
+License
+=======
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+
+
+The version of this README is:
+$Id$

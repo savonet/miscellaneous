@@ -1,0 +1,293 @@
+#!@liquidsoap@
+
+# No loggin for now
+set("log.stdout",false)
+set("log.file",false)
+
+# Audio player implemented in liquidsoap
+version = "0.1"
+
+# Detect available outputs
+outputs = [
+%ifdef output.ao
+"ao",
+%endif
+%ifdef output.alsa
+"alsa",
+%endif
+%ifdef output.oss
+"oss",
+%endif
+%ifdef output.jack
+"jack",
+%endif
+"dummy"
+]
+
+if list.length(outputs) == 1 then
+  print("No local output available.")
+  shutdown ()
+end
+outs = string.concat(separator=", ", outputs)
+
+usage = 
+"Usage: liq123 [ -h ] [ -o output ] " ^ 
+%ifdef lastfm.submit
+"[ -s user ] " ^
+%endif
+"[ -r ] [ -f ] [ -d ] [ http://... " ^
+%ifdef lastfm.submit
+"| lastfm://... " ^
+%endif
+"| directory | filename ]
+* Output can be: #{outs}
+  Default: " ^ list.hd(outputs) ^ "\n" ^  
+%ifdef lastfm.submit
+"* -s option is for optional lastfm submission, 
+  password request will be prompted.\n" ^ 
+%endif
+"* -d turns on internal logging for debugging.
+* -r randomize directory listings.
+* For safety reasons, when ready a directory, 
+  liq123 needs an initial valid file.
+  It will shutdown if the first file found is not valid
+  Use -f to force reading in this case.
+* -h prints this message."
+
+# Initial message
+print("Starting liq123 version #{version}")
+
+lastfm = ""
+%ifdef lastfm.submit
+# Get lastfm option
+lastfm = getopt(default="none","-s")
+# Use two even queues to prevent lastfm submission
+# from blocking file resolution
+if lastfm != "none" then
+  set("scheduler.event_queues",2)
+end
+%endif
+
+# Get debugging option
+if getopt("-d") == "1" then
+  print("Enabling debug messages.")
+  set("log.stdout",true)
+  set("log.level",4)
+end
+
+# Get randomization option
+random = getopt("-r")
+
+# Get force option
+force = getopt("-f")
+
+# Get help option
+help = getopt("-h")
+
+# Get output option
+driver = getopt(default="ao","-o")
+def output(s) = output.dummy(id="dummy",s) end
+%ifdef output.ao
+def output(s) = 
+  # Ao is default output when available
+  if driver != "dummy" then
+    output.ao(id="ao",s)
+  else
+    output(s)
+  end
+end
+%endif
+%ifdef output.alsa
+def output(s) =
+  if driver == "alsa" then
+    output.alsa(id="alsa",s)
+  else
+    output(s)
+  end
+end
+%endif
+%ifdef output.oss
+def output(s) =
+  if driver == "oss" then
+    output.oss(id="oss",s)
+  else
+    output(s)
+  end
+end
+%endif
+%ifdef output.jack
+def output(s) =
+  if driver == "jack" then
+    pid = string_of(getpid())
+    output.jack(id="jack-" ^ pid,s)
+  else
+    output(s)
+  end
+end
+%endif
+
+# Get arguments from command line
+uri = argv(default="",1)
+
+# Print metadatas
+def process_meta(user,password,meta)
+  title = '$(if $(title),"$(title)","Unknown Title")'%[("title",meta['title'])]
+  print("Title: #{title}")
+  artist = meta["artist"]
+  if artist != "" then
+    print("Artist: #{artist}")
+  end
+  album = meta["album"]
+  if album != "" then
+    print("Album: #{album}")
+  end
+%ifdef lastfm.submit
+  if user != "" and password != "" then
+    print("Submiting song to lastfm...")
+    lastfm.submit(user=lastfm,password=password,meta)
+  end
+%endif
+  print("")
+end
+
+# Main source
+def sri(uri) =
+password = ""
+%ifdef lastfm.submit
+  # Test for lastfm submition
+  def password =
+    if lastfm != "none" then
+      print("Will submit songs to lastfm on account #{lastfm}")
+      print(newline=false,"Pleast enter lastfm password for #{lastfm}: ")
+      read(hide=true)
+    else
+      ""
+    end
+  end
+%endif
+  def playlist.custom(files)
+    x = string.ref("0")
+    get = fst(x)
+    set = snd(x)
+    length = list.length(files)
+    if length == 0 then
+      print("Directory or playlist is empty, shutting down..")
+      shutdown ()
+    end
+    # Trying to resolve the first file
+    first = request.create(audio=true,persistent=true,list.hd(files))
+    if not request.resolve(first) then
+      print("Could not read first file: #{request.filename(first)}")
+      if force != "1" then
+        print("Shutting down..")
+        shutdown ()
+      end
+    end
+    def next () =
+      state = int_of_string(get())
+      file =
+        if state < length then
+          set(string_of(state + 1))
+          list.nth(files,state)
+        else
+          # Playlist finished
+          ""
+        end
+      request.create(audio=true,file)
+    end
+    request.dynamic(next)
+  end
+# Shutdown source and transition
+  s = blank(id="shutdown")
+  def transition (a,b)
+    if source.id(b) == "shutdown" then
+      print("Work finished: shutting down..")
+      shutdown ()
+    end
+    b
+  end
+  # Test if source is a file
+  if test_process("test -f #{quote(uri)}") then
+    print("Listening to local file: #{uri}")
+    # Check for playlist file
+    # Set to false by default
+    is_playlist = false
+    %ifdef file.mime
+    mime = file.mime(uri)
+    is_playlist = 
+      if list.hd(string.split(separator="/",mime)) == "text" then
+        print("Text file treated as playlist.")
+        true
+      else
+        false
+      end
+    %endif
+    source = 
+      if is_playlist then
+        playlist = request.create(audio=false,uri)
+        if not request.resolve(playlist) then
+          print("Could not get file from playlist")
+          shutdown ()
+        end
+        playlist = playlist.parse(request.filename(playlist))
+        playlist = list.map(snd,playlist)
+        playlist.custom(playlist)
+      else
+        sequence([single(uri),fallback([])])
+      end
+    source = on_metadata(
+            process_meta(lastfm,password),
+            source)
+    fallback([source,s],transitions=[transition,transition])
+  # Test for a directory
+  elsif test_process("test -d #{quote(uri)}") then
+    print("Listening to local directory: #{uri}")
+    print("Reading directory, this may take some time")
+    # Filtering to wav ogg and mp3 extensions for now..
+    sort_mode = 
+      if random != "1" then
+        ""
+      else
+        "-R"
+      end
+    files = get_process_lines("find #{quote(uri)} -type f | grep '\.wav$\|\.mp3$\|\.ogg$' | sort #{sort_mode}")
+    playlist = on_metadata(
+                 process_meta(lastfm,password),
+                 playlist.custom(files))
+    fallback(track_sensitive=false,[playlist,s],transitions=[transition,transition])
+%ifdef input.lastfm
+  # Test for lastfm:// streams
+  elsif string.match(pattern="^lastfm://",uri) then
+    print("Listening to lastfm stream: #{uri}")
+    source = on_metadata(
+               process_meta(lastfm,password),
+               input.lastfm(uri))
+    mksafe(source)
+%endif
+  # Now test http://
+  elsif string.match(pattern="^http://",uri) then
+    print("Listening to http stream: #{uri}")
+    source = on_metadata(
+               process_meta(lastfm,password),
+               input.http(uri))
+    mksafe(source)
+  else
+    print("Unknown source : #{uri}")
+    shutdown()
+    blank()
+  end
+end
+
+if help != "1" and uri != "" then 
+   # Start !
+   s = output(sri(uri))
+   id = source.id(s)
+   print("Selected output: #{id}")
+   if not string.match(pattern=driver,id) then
+     print("-> Driver #{driver} might not be available.")
+   end
+   print("")
+else
+   print(usage)
+end
+

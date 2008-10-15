@@ -1,0 +1,6 @@
+OCaml-fetch readme.
+
+In order to use ocaml-fetch in your program, you have to link it using
+the "-linkall" option of ocamlc/ocamlopt, because the plugins are
+never referenced directly, and thus not linked in the program by
+default.

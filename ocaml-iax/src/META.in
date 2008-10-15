@@ -1,0 +1,6 @@
+name="iax"
+version="@VERSION@"
+description="OCaml bindings for iax"
+requires="unix @requires@"
+archive(byte)="iax.cma"
+archive(native)="iax.cmxa"

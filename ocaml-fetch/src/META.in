@@ -1,0 +1,6 @@
+name="Fetch"
+version="@VERSION@"
+description="Universal file fetcher for OCaml"
+requires="@OCAML_LIBS@ str unix"
+archive(byte) = "fetch.cma"
+archive(native) = "fetch.cmxa"

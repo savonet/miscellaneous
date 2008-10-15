@@ -1,0 +1,8 @@
+SOURCES=mbtrm.ml
+RESULT=mbtrm
+LIBS=mad musicbrainz
+INCDIRS=../src ../../ocaml-mad/src
+
+all: dc
+
+include OCamlMakefile
