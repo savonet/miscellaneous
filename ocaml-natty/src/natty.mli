@@ -148,7 +148,7 @@ sig
       chunk = 
    | Comm of comm_data
    | Ssnd of ssnd_data
-   | Fver of int
+   | Fver of Int64.t
    | Form of string
    | Appl of appl_data
    | Auth of string

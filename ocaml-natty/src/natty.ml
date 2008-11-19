@@ -227,7 +227,7 @@ struct
       chunk = 
    | Comm of comm_data
    | Ssnd of ssnd_data
-   | Fver of int
+   | Fver of Int64.t
    | Form of string
    | Appl of appl_data
    | Auth of string
@@ -327,11 +327,11 @@ struct
           v2         : 16;
           bits       : -1  : bitstring
         } -> 
-          let version = Printf.sprintf "0x%x%x" v1 v2 in
-          let version = int_of_string version in
-          if version <> 0xa2805140 then
+          let sversion = Printf.sprintf "0x%x%x" v1 v2 in
+          let version = Int64.of_string sversion in
+          if version <> Int64.of_string "0xa2805140" then
             begin
-              failwith (Printf.sprintf "Unknown format version: 0x%x" version);
+              failwith (Printf.sprintf "Unknown format version: %s" sversion);
             end ;
           Fver version, bits
          (* SSND chunk *)
