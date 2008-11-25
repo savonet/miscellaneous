@@ -5,7 +5,7 @@ set("log.stdout",false)
 set("log.file",false)
 
 # Stream ripper, implemented in liquidsoap
-version = "0.1"
+version = "@VERSION@"
 
 # Detect available outputs
 outputs = [
@@ -28,7 +28,8 @@ Where:
  * -o is mandatory
  * -f is mandatory, possible values: #{outs}
  * -p starts local playout  while ripping (default: no)
- * -t specify what timeout resets the ripping state (default: 10)"
+ * -t specify what timeout resets the ripping state (default: 10)
+ * -h, --help: print this message."
 
 # Initial message
 print("Starting streamliqueur version #{version}")
@@ -39,6 +40,14 @@ if getopt("-d") == "1" then
   set("log.stdout",true)
   set("log.level",4)
 end
+
+# Get help option
+help =
+ if getopt("-h") == "1" or getopt("--help") == "1" then
+  true
+ else
+  false
+ end
 
 # Get playout option
 play = getopt("-p") == "1"
@@ -188,7 +197,7 @@ def transition(a,b)
   b
 end
 
-if stop then
+if stop or help then
   print("Usage: #{usage}")
   print("Shutting down..")
   fail()

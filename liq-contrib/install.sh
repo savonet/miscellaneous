@@ -3,7 +3,7 @@ set -e
 
 INST_DIR="/usr/local/bin"
 DIST="*.in CHANGES install.sh"
-VERSION="0.1.0"
+VERSION="UNDEFINED (yet)"
 
 # Dummy install script for liquidsoap utils.
 # Usage: install --install [ /path/to/install/directory ]
@@ -29,7 +29,7 @@ elif [ "$1" = "--clean" ]; then
     echo "Using provided install directory: $2"
     INST_DIR="$2"
   fi
-find | grep '.in$' | while read i; do
+find | grep '.in$' | sed -e 's#\.in$##' | while read i; do
   SCRIPT=`basename $i`
   echo "* $SCRIPT"
   rm -f "$INST_DIR/$SCRIPT"
@@ -77,7 +77,7 @@ elif [ "$1" = "--install" ]; then
   find | grep '.in$' | while read i; do
     SCRIPT=`basename $i | sed -e 's#.in$##'`
     echo "* $SCRIPT"
-    cat $i | sed -e "s#@liquidsoap@#$LIQ_BIN#" > "dist/$SCRIPT"
+    cat $i | sed -e "s#@liquidsoap@#$LIQ_BIN#" | sed -e "s#@VERSION@#$VERSION#" > "dist/$SCRIPT"
     chmod +x "dist/$SCRIPT"
   done;
 

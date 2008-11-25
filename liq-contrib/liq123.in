@@ -5,7 +5,7 @@ set("log.stdout",false)
 set("log.file",false)
 
 # Audio player implemented in liquidsoap
-version = "0.1"
+version = "@VERSION@"
 
 # Detect available outputs
 outputs = [
@@ -52,7 +52,7 @@ usage =
   liq123 needs an initial valid file.
   It will shutdown if the first file found is not valid
   Use -f to force reading in this case.
-* -h prints this message."
+* -h, --help: print this message."
 
 # Initial message
 print("Starting liq123 version #{version}")
@@ -82,7 +82,12 @@ random = getopt("-r")
 force = getopt("-f")
 
 # Get help option
-help = getopt("-h")
+help = 
+ if getopt("-h") == "1" or getopt("--help") == "1" then
+  true
+ else
+  false
+ end
 
 # Get output option
 driver = getopt(default="ao","-o")
@@ -278,7 +283,7 @@ password = ""
   end
 end
 
-if help != "1" and uri != "" then 
+if (not help) and uri != "" then 
    # Start !
    s = output(sri(uri))
    id = source.id(s)

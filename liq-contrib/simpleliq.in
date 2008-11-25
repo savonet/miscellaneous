@@ -5,7 +5,7 @@ set("log.stdout",false)
 set("log.file",false)
 
 # Audio streamer implemented in liquidsoap
-version = "0.1"
+version = "@VERSION@"
 
 # Detect available outputs
 outputs = [
@@ -52,39 +52,40 @@ def shutdown() =
   shutdown()
 end
 
-usage = "Usage: simpleliq [ -h ] [ -i input ] [ -o output ] [ -e effect] [ -t transition] [ -script ] [ -local ]\n" ^
-"* -h displays this message\n" ^
-"* Input can be: #{ins}\n" ^
-"* Output can be: #{outs}\n" ^
-"* Effect can be: none, compress, normalize, nrj (normalize+compress)\n" ^
-"* Transition can be: #{trs}\n" ^
-"* -script outputs the corresponding script\n" ^
-"* -local plays the stream on the local soundcard\n" ^
-"\n" ^
-"Optional settings:\n" ^
-"\n" ^
-"Settings for alsa input (if enabled):\n" ^
-"* -alsa-device: set alsa input device (default: default)\n" ^
-"\n" ^
-"Settings for jack input (if enabled):\n" ^
-"* -jack-device: set jack input port name (default: simpleliq)\n" ^
-"\n" ^
-"Settings for playlist, directory and file input:\n" ^
-"* -uri: set default media source uri (default: false://)\n" ^
-"\n" ^
-"Settings for Icecast output (if enabled):\n" ^
-"* -host: set host (default: localhost)\n" ^
-"* -port: set source destination port (default: 8080)\n" ^
-"* -password: set source password (default: hackme)\n" ^
-"* -genre: set source genre (default: savonet)\n" ^
-"* -url: set source URL (default: http://savonet.sf.net)\n" ^
-"* -description: set source description (default: Powered by liquidsoap)\n" ^
-"* -stereo: stream stereo audio data (default: true)\n" ^
-"* -bitrate: set bitrate for mp3 output (default: 128)\n" ^
-"* -samplerate: set samplerate (default: 44100)\n" ^
-"* -restart: try to restart the output after a failure (default: false)\n" ^
-"* -quality: set quality, for vorbis output (default: 2.)\n" ^
-"* -mount: set mountpoint (default: none)\n"
+usage = "Usage: simpleliq [ -h ] [ -i input ] [ -o output ] [ -e effect] [ -t transition] [ -script ] [ -local ]
+* -h displays this message
+* Input can be: #{ins}
+* Output can be: #{outs}
+* Effect can be: none, compress, normalize, nrj (normalize+compress)
+* Transition can be: #{trs}
+* -script outputs the corresponding script
+* -local plays the stream on the local soundcard
+* -h, --help: print this message
+
+Optional settings:
+
+Settings for alsa input (if enabled):
+* -alsa-device: set alsa input device (default: default)
+
+Settings for jack input (if enabled):
+* -jack-device: set jack input port name (default: simpleliq)
+
+Settings for playlist, directory and file input:
+* -uri: set default media source uri (default: false://)
+
+Settings for Icecast output (if enabled):
+* -host: set host (default: localhost)
+* -port: set source destination port (default: 8080)
+* -password: set source password (default: hackme)
+* -genre: set source genre (default: savonet)
+* -url: set source URL (default: http://savonet.sf.net)
+* -description: set source description (default: Powered by liquidsoap)
+* -stereo: stream stereo audio data (default: true)
+* -bitrate: set bitrate for mp3 output (default: 128)
+* -samplerate: set samplerate (default: 44100)
+* -restart: try to restart the output after a failure (default: false)
+* -quality: set quality, for vorbis output (default: 2.)
+* -mount: set mountpoint (default: none)"
 
 
 # Initial message
@@ -95,7 +96,14 @@ input = getopt(default="blank","-i")
 output = getopt(default="dummy","-o")
 effect = getopt(default="none","-e")
 transition = getopt(default="none","-t")
-help = getopt("-h")
+
+# Get help option
+help =
+ if getopt("-h") == "1" or getopt("--help") == "1" then
+  true
+ else
+  false
+ end
 
 # Initial script:
 script = string.ref("")
@@ -358,7 +366,7 @@ end
 script.set(script.get() ^ "# That's all folks !")
 
 # Print config
-if help != "1" then
+if not help then
   if not is_failed() then
     print("Streaming config:")
     print("Input:       #{source.id(s)}")
@@ -382,7 +390,7 @@ if help != "1" then
     end
   else
     print("Something went wrong...")
-    print(usage)
+    print("Start with --help to get some help.")
     shutdown ()
     blank ()
   end
