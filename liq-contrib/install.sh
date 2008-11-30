@@ -2,7 +2,7 @@
 set -e
 
 INST_DIR="/usr/local/bin"
-DIST="*.in liq-contrib.1 CHANGES install.sh"
+DIST="*.in liq-contrib.1 CHANGES COPYING install.sh"
 VERSION="08.11"
 
 # Dummy install script for liquidsoap utils.
