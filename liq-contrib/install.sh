@@ -3,7 +3,7 @@ set -e
 
 INST_DIR="/usr/local/bin"
 DIST="*.in liq-contrib.1 CHANGES install.sh"
-VERSION="UNDEFINED(yet)"
+VERSION="08.11"
 
 # Dummy install script for liquidsoap utils.
 # Usage: install --install [ /path/to/install/directory ]
