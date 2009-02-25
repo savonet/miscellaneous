@@ -34,6 +34,7 @@ CC = @CC@
 CFLAGS = @CFLAGS@ @libshout_CFLAGS@
 CPPFLAGS = @CPPFLAGS@
 BEST = @BEST@
+NO_CUSTOM = yes
 
 
 all: $(BEST)

@@ -31,10 +31,10 @@ PROTOCOLS = @PROTOCOLS@
 SOURCES = proto.ml fetch.mli fetch.ml $(PROTOCOLS:%=%_fetch.ml)
 RESULT = fetch
 LIBINSTALL_FILES = $(wildcard *.a *.mli *.cma *.cmxa) fetch.cmi
-LIBS = @OCAML_LIBS@
 INCDIRS = $(OCAML_LIB_FTP) $(OCAML_LIB_SMBCLIENT)
 OCAMLLDFLAGS += -linkall
 OCAMLDOCFLAGS = -stars
+NO_CUSTOM = yes
 
 all: $(BEST)
 

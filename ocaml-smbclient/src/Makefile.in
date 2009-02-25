@@ -33,6 +33,7 @@ CFLAGS = @CFLAGS@
 CPPFLAGS = @CPPFLAGS@
 CLIBS := @LIBS@
 CLIBS := $(CLIBS:-l%=%)
+NO_CUSTOM = yes
 
 all: $(BEST)
 byte: bcl

@@ -22,7 +22,7 @@ SOURCES = ftp.mli ftp.ml
 RESULT = ftp
 LIBINSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmxa *.cmx *.a *.so)
 OCAMLLDFLAGS =
-LIBS = unix str
+NO_CUSTOM = yes
 
 all: $(BEST)
 

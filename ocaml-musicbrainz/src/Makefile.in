@@ -34,6 +34,7 @@ CC = @CC@
 CFLAGS = @CFLAGS@ @libmusicbrainz_CFLAGS@ -Wall -DCAML_NAME_SPACE
 CPPFLAGS = @CPPFLAGS@
 TRASH = musicbrainz.ml
+NO_CUSTOM = yes
 
 all: $(BEST)
 
