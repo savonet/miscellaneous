@@ -103,14 +103,14 @@ struct
                length      = length;
                format      = audio_codec 
              }
-      | { _ } -> raise Unknown_format    
+      | { _ : -1 : bitstring } -> raise Unknown_format    
   
   let get_samples x n = 
     let ret,bits = 
       bitmatch !(x.data) with
         | { ret  : n*8 : string; 
             bits : -1  : bitstring } -> ret,bits
-        | { _ } -> raise Not_found
+        | { _ : -1 : bitstring } -> raise Not_found
     in
     x.data := bits;
     ret
@@ -179,14 +179,14 @@ struct
             length = length;
             format = format 
           }
-      | { _ } -> raise Unknown_format
+      | { _ : -1 : bitstring } -> raise Unknown_format
   
   let get_samples x n =
     let ret,bits =
       bitmatch !(x.data) with
         | { ret  : n*8 : string;
             bits : -1  : bitstring } -> ret,bits
-        | { _ } -> raise Not_found
+        | { _ : -1 : bitstring } -> raise Not_found
     in
     x.data := bits;
     ret
@@ -288,7 +288,7 @@ struct
               -.f
             else
               f
-      | { _ } -> failwith "couldn't find enough data"
+      | { _ : -1 : bitstring } -> failwith "couldn't find enough data"
   
   let get_chunk_bits bits = 
     bitmatch bits with
@@ -311,7 +311,7 @@ struct
                        name : (len - 22)*8 : string;
                        bits : -1           : bitstring
                      } -> bits,Some {id = id; name = name }
-                   | { _ } -> failwith "Error while parsing COMM chunk compression data.."
+                   | { _ : -1 : bitstring } -> failwith "Error while parsing COMM chunk compression data.."
            in
            Comm { num_chans     = num_chans; 
                   num_frames    = Int32.to_int num_frames; 
@@ -365,7 +365,7 @@ struct
             let f bits = 
               bitmatch Bitstring.takebits 8 bits with
                 | { 0 : 8 } -> Bitstring.dropbits 8 bits
-                | { _ } -> bits
+                | { _ : -1 : bitstring } -> bits
             in
             begin
               match chunk_type with
@@ -389,7 +389,7 @@ struct
       | { x : 4*8 : string } -> 
           failwith (Printf.sprintf "Couldn't parse chunk %s" x)
       | { _ : 0 : bitstring } -> raise Eof
-      | { _ } -> failwith "couldn't parse chunk header" 
+      | { _ : -1 : bitstring } -> failwith "couldn't parse chunk header" 
   
   let open_f f = 
     let bits = Bitstring.bitstring_of_file f in
@@ -456,7 +456,7 @@ struct
            length   = length;
            chunks   = chunks;
            rem_bits = bits }      
-      | { _ } -> raise Unknown_format
+      | { _ : -1 : bitstring } -> raise Unknown_format
   
   let get_chunk x = 
     let chunk,nbits = get_chunk_bits !(x.rem_bits) in
@@ -468,7 +468,7 @@ struct
       bitmatch !(x.ssnd) with
         | { ret  : n*8 : string;
             bits : -1  : bitstring } -> ret,bits
-        | { _ } -> raise Not_found
+        | { _ : -1 : bitstring } -> raise Not_found
     in
     x.ssnd := bits;
     ret
@@ -531,7 +531,7 @@ struct
                in
                chunks := chunk :: !chunks;
                bits
-          | { _ } -> failwith "Error while getting chunk.."
+          | { _ : -1 : bitstring } -> failwith "Error while getting chunk.."
       in
       (* The official spec is wrong at this place.
        * The correct spec for this header is:
@@ -576,7 +576,7 @@ struct
                   | { len : 20 : bigendian,
                                  check(len < 524288 + num_aux*(32768+6))
                     } -> len
-                  | { _ } -> assert false
+                  | { _ : -1 : bitstring } -> assert false
               in
               let rec f i bits = 
                 if i = num_aux then 
@@ -593,9 +593,9 @@ struct
                          audio  = audio_data;
                          chunks = !chunks },
                        bits
-                | { _ } -> failwith "error while getting frame data.."
+                | { _ : -1 : bitstring } -> failwith "error while getting frame data.."
             end
-        | { _ } -> failwith "error while getting frame payload.."
+        | { _ : -1 : bitstring } -> failwith "error while getting frame payload.."
   
   
   let get_frame_header bits =
@@ -622,7 +622,7 @@ struct
       | { 0xBEEF : 16 : littleendian; (* No sync frame magic *)
           bits : -1 : bitstring }
         -> Async,bits
-      | { _ } -> raise Not_found
+      | { _ : -1 : bitstring } -> raise Not_found
   
   let get_frame x = 
     let header,bits  = get_frame_header !(x.data) in
@@ -655,6 +655,6 @@ struct
             metadata = metadata;
             toc      = toc;
             format   = format }
-      | { _ } -> raise Unknown_format
+      | { _ : -1 : bitstring } -> raise Unknown_format
 
 end
