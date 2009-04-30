@@ -1,0 +1,29 @@
+{% extends "admin/base.html" %}
+
+{% comment %}
+    Copyright (c) 2009, Chris Everest 
+    This file is part of Washtub.
+
+    Washtub is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Washtub is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Washtub.  If not, see <http://www.gnu.org/licenses/>.
+{% endcomment %}
+
+{% load i18n %}
+{% load controller_extras %}
+{% block title %}{{ title|escape }} | {% trans 'Washtub' %} {% endblock %}
+{% block branding %}
+<h1 id="site-name">{% trans 'Washtub Site Administration' %}</h1>
+<h2><a href="{{ ""|baseurl }}">Main Site</a></h2>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

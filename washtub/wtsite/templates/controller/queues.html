@@ -1,0 +1,60 @@
+{% comment %}
+    Copyright (c) 2009, Chris Everest 
+    This file is part of Washtub.
+
+    Washtub is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Washtub is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Washtub.  If not, see <http://www.gnu.org/licenses/>.
+{% endcomment %}
+
+{% for name, entries in queue.items %}
+  	<b>Queue(</b><i>{{ name }}</i><b>):</b><br/>
+  	<table id="queueTable{{ forloop.counter0 }}" class="tablesorter"> 
+	<thead> 
+	<tr> 
+	    <th class="pos">#</th> 
+	    <th class="title">Title</th> 
+	    <th class="artist">Artist</th> 
+	    <th class="album">Album</th> 
+	    <th class="status">Status</th>
+	    <th class="onair">On Air</th>
+	    <th class="rid">RID</th> 
+	</tr>
+  	</thead>
+  	<tbody>
+ 	{% if entries %}
+	  	{% for e in entries %}
+	  		{% for rid, listing in metadata_storage.items %}
+	  			{% ifequal e rid %}
+	  				<tr>
+	  					<td class="pos">{{ forloop.parentloop.counter }}</td>
+	  					<td>{{ listing.title|truncatewords:8 }}</td>
+	  					<td>{{ listing.artist }}</td>
+	  					<td>{{ listing.album|truncatewords:5 }}</td>
+	  					<td>{{ listing.status }}</td>
+	  					{% if listing.on_air %}
+	  						<td>{{ listing.on_air }}{% now "T" %}</td>
+	  					{% else %}
+	  						<td></td>
+	  					{% endif %}
+	  					<td class="rid">{{ listing.rid }}</td>
+	  				</tr>
+	  			{% endifequal %}
+	  	  	{% endfor %}
+	   	 {% endfor %}
+ 	{% else %}
+   	  	<tr><td colspan="7">There are no items in this queue to display.</td></tr>
+  	{% endif %}
+  	</tbody>
+  	</table>
+  	<br/>
+{% endfor %}

@@ -1,0 +1,16 @@
+0.12  04/30/2009
+	- Cleaned up main.css to remove extraneous elements that are no longer used.
+	- Add GPLv2 licensing to the project
+	- Add washtub-apache-dist.conf and settings-dist.conf for default settings.
+	- Removed all extraneous tango icons to slim down size of package.
+	- Tabs are ajaxified loading content to tab on every click (cache control still needed)
+	- Created portable configuration in django for easier deployment.
+	- Added external djangologging app for discrete debugging and messaaging control
+	- Control input.http() start and stop
+	- Control output.*() start, stop, skip and display status
+	- Control queues with push() support
+	- Display queues with support for multiple queues.
+	- Display history with support for multiple outputs.
+	- Add mediapool app for scanning media files and pushing to queues (.flac, .mp3)
+	- Add search capability to mediapool
+	- Add support for per-host theming via jQuery UI (http://jqueryui.com/)

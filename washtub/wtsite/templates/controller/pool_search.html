@@ -1,0 +1,33 @@
+{% extends "controller/pool.html" %}
+
+{% comment %}
+    Copyright (c) 2009, Chris Everest 
+    This file is part of Washtub.
+
+    Washtub is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Washtub is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Washtub.  If not, see <http://www.gnu.org/licenses/>.
+{% endcomment %}
+
+{% block pagination %}
+   <div class="pagination"> 
+	<span class="pagination-pre">
+	{% if single_page.has_previous %}&larr;<a href="{% url controller.views.display_status active_host %}?pg={{ single_page.previous_page_number }}&{{ query_string }}">previous</a>{% endif %}
+	</span>
+	{% if single_page.number %}
+	<span class="pagination-count">page {{ single_page.number }} of {{ single_page.paginator.num_pages }}</span>
+	{% endif %}
+	<span class="pagination-next">
+	{% if single_page.has_next %}<a href="{% url controller.views.display_status active_host %}?pg={{ single_page.next_page_number }}&{{query_string}}">next</a>&rarr;{% endif %}
+	</span>
+	</div>
+{% endblock pagination %}

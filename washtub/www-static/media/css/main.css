@@ -1,0 +1,394 @@
+/*
+    Copyright (c) 2009, Chris Everest 
+    This file is part of Washtub.
+
+    Washtub is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Washtub is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Washtub.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+.demoHeaders { margin-top: 2em; }
+#dialog_link {padding: .4em 1em .4em 20px;text-decoration: none;position: relative;}
+#dialog_link span.ui-icon {margin: 0 5px 0 0;position: absolute;left: .2em;top: 50%;margin-top: -8px;}
+ul#icons {margin: 0; padding: 0;}
+ul#icons li {margin: 2px; position: relative; padding: 4px 0; cursor: pointer; float: left;  list-style: none;}
+ul#icons span.ui-icon {float: left; margin: 0 4px;}
+
+body {
+color:black;
+font:62.5% "lucida sans", sans-serif;
+padding:0px;
+text-align:left;
+margin: 0 50px 0 50px;
+}
+
+.header {
+    border-style : solid;
+    border-width : 0px 0px 0px 0px;
+    border-color : black;
+    color : green;
+    font-size: 12px;
+    background : white;
+    padding: 8px 5px 3px 0px;
+	margin-left:auto;
+	margin-right:auto;
+    height: 24px;
+	text-align:center;
+}
+
+div.status a {
+	color:green;
+}
+
+.navigation {
+    float:left;
+}
+
+div.status{
+	float:right;
+}
+
+a.menu {
+    font-weight : normal;
+    text-decoration : none;
+    color : black;
+}
+
+a.menu:hover {
+    text-decoration : underline;
+}
+
+a.action {
+    font-weight : normal;
+    text-decoration : none;
+    color : red;
+}
+
+a {
+color:black;
+text-decoration:underline;
+}
+
+a:hover {
+text-decoration:underline;
+}
+
+p {
+text-indent: 1.5em;
+}
+
+hr {
+color:black;
+clear:both;
+padding:0;
+}
+
+a img {
+border-style:none;
+}
+
+img {
+float:left;
+display:inline;
+padding:0;
+margin:0px;
+margin-bottom:12px;
+}
+
+/*** Content wrap ***/
+
+#wrap {
+clear:both;
+font-size:0.9em;
+padding:0px;
+}
+
+/*** Sidebars ***/
+
+#leftside,#footer,.rightblock {
+margin-left:auto;
+margin-right:auto;
+text-align:left;
+display:block;
+}
+#leftside,#footer {
+clear:left;
+float:left;
+padding-bottom:0;
+margin:10px 0 0 0;
+width: 542px;
+}
+#leftside{
+width:auto;
+}
+#rightside, #controls{
+text-align:left;
+float:right;
+margin:0px 0px 0px 10px;
+width:275px;
+display:block;
+}
+#controls{
+display:inline;
+width:175px;
+}
+.rightblock {
+margin:0;
+padding:10px;
+}
+
+#error a {
+padding:0 3px 0 3px;
+background:white;
+color:red;
+font-size:1.1em;
+font-weight:bold;
+}
+	
+
+#leftside h1,#rightside h1 {
+color:#505050;
+font-size:2.4em;
+font-weight:bold;
+letter-spacing:-1px;
+margin:0px;
+}
+
+#leftside h1 a {
+color:#505050;
+font-size:1.10em;
+font-weight:bold;
+letter-spacing:-1px;
+margin:0 0 6px;
+text-decoration:none;
+}
+
+h1 div.info {
+display:inline;
+font-size:0.70em;
+font-weight:normal;
+margin:0;
+vertical-align: middle;
+letter-spacing:0.005em;
+}
+
+#leftside h2,#rightside h2 {
+font-size:1.1em;
+margin:10px 0 0 0px;
+}
+
+#rightside h2 {
+font-size:1.1em;
+margin:0px 0 0 0px;
+}
+	
+
+#leftside div {
+margin-left:12px;
+margin-top:3px;
+}
+
+#leftside p,#leftside ul{
+font-size:1.20em;
+line-height:1.1em;
+margin:0 5px 16px 10px;
+}
+
+#rightside ul{
+margin:0 5px 5px 2px;
+padding:0;
+list-style-type:none;
+font-size:0.90em;
+}
+#rightside ul li {
+padding: 0 0 0.7em 0;
+margin:0px;
+}
+#rightside ul li p{
+font-family:"lucida sans", sans-serif;
+display:inline;
+text-indent: 0;
+font-size:1.0em;
+}
+
+/*** Various classes ***/
+
+.searchform {margin:0;float:right}
+
+.searchbox {
+background:#f0f0f0;
+border:1px solid #b0b0b0;
+margin:0 4px 0 0;
+width:100px;
+}
+
+.searchbutton {
+background:#f0f0f0;
+border:1px solid #b0b0b0;
+}
+
+.loginform {
+clear:both;
+margin: 0px 0px 0px 0px;
+padding: 0px;
+width:100%;
+float:right;
+display:block;
+}
+
+form {
+padding:0px;
+margin:0px;
+}
+
+.clearingdiv {
+clear:both;
+height:1px;
+width:1px;
+}
+
+.hide {display:none;}
+
+/*** Text format ***/
+
+.small {font-size:0.8em;}
+.large {font-size:1.4em;}
+.center {text-align:center;}
+.right {text-align:right;}
+
+.pagination{
+display:inline;
+text-transform:none;
+font-weight:normal;
+display:inline;
+text-align:center;
+margin-right:auto;
+margin-left:auto;
+}
+
+.pagination-count, .pagination-pre, .pagination-next{
+font-size:1.2em;
+padding-bottom:1.0em;
+width:31%;
+display:inline-block;
+}
+
+div .help{
+	font-size:8pt;
+}
+
+/* tables */
+
+table a #controlspan, table div #controlspan {
+	display:block;
+	text-indent:0.85em;
+	width:100%;
+	height:100%;
+	cursor:pointer;
+	text-decoration:none;
+}
+
+td a {
+vertical-align:middle;
+}
+
+table.tablesorter {
+	font-family:arial;
+	background-color: #CDCDCD;
+	margin:10px 0pt 15px;
+	font-size: 8pt;
+	width: 100%;
+	text-align: left;
+}
+
+#controls table.tablesorter {
+	margin:10px 0pt 0px;
+}
+	
+table.tablesorter thead tr th, table.tablesorter tfoot tr th {
+	background-color: #e5e5e5;
+	color:#3D3D3D;
+	border: 1px solid #FFF;
+	font-size: 8pt;
+	padding: 4px;
+}
+table.tablesorter tfoot tr {
+	height:5px;
+}
+table.tablesorter thead tr .header {
+	background-repeat: no-repeat;
+	background-position: center right;
+	cursor: pointer;
+}
+table.tablesorter tbody td {
+	color: #3D3D3D;
+	padding: 4px;
+	background-color: #FFF;
+	vertical-align: top;
+}
+table.tablesorter tbody tr.odd td {
+	background-color:#F0F0F6;
+}
+table.tablesorter thead tr .headerSortUp {
+	background-image: url(../images/asc.gif);
+}
+table.tablesorter thead tr .headerSortDown {
+	background-image: url(../images/desc.gif);
+}
+table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSortUp {
+background-color: #c0c0c0;
+}
+table.tablesorter th.pos, td.pos, th.rid, td.rid, th.track, td.track, th.ops, td.ops {
+	width: 30px;
+	text-align:center;
+}
+table.tablesorter th.title {
+	width: 250px;
+}
+table.tablesorter th.artist, th.album {
+	width: 150px;
+}
+table.tablesorter th.onair, th.lastplay {
+	width: 115px;
+}
+table.tablesorter th.status, th.genre {
+	width: 75px;
+}
+table.tablesorter td.play {
+	background: #FFF url(../images/tango/16x16/actions/media-playback-start.png) no-repeat center;
+	width:60%;
+}
+table.tablesorter td.stop {
+	background: #FFF url(../images/tango/16x16/actions/media-playback-stop.png) no-repeat center;
+	width:20%;
+}
+table.tablesorter td.skip {
+	background: #FFF url(../images/tango/16x16/actions/media-skip-forward.png) no-repeat center;
+	width:20%;
+}
+table.tablesorter td.statuson {
+	background: #abee87 url(../images/tango/16x16/status/audio-volume-high.png) no-repeat 75% 50%;
+	width:40%;
+}
+table.tablesorter td.statusoff {
+	background: #ee8a7c url(../images/tango/16x16/status/audio-volume-muted.png) no-repeat 75% 50%;
+	width:40%;
+}
+table.tablesorter td.remaining {
+	width:40%;
+	text-align:center;
+}
+
+.ui-tabs {
+	min-height: 450px;
+}
+/*** End of file ***/

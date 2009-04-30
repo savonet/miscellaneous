@@ -1,0 +1,175 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<!--
+    Copyright (c) 2009, Chris Everest 
+    This file is part of Washtub.
+
+    Washtub is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Washtub is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Washtub.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<head>
+<title>
+		{% load controller_extras %}	
+        {% block title %} Washtub {% endblock title %}
+</title> 
+<link rel="Shortcut Icon" href="/media/images/favicon.ico"/>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="description" content="Washtub, the liquidsoap controller." />
+<meta name="keywords" content="" />
+<meta name="author" content="Chris Everest" />
+<link rel="stylesheet" type="text/css" href="{{ "media/css/main.css"|baseurl }}" />
+<base target="_top" />
+{% if theme %}
+<link type="text/css" href="{{ "media/theme/"|cat:theme|cat:"/css/custom-theme/jquery-ui-1.7.1.custom.css"|baseurl }}" rel="stylesheet" />	
+<script type="text/javascript" src="{{ "media/js/jquery-1.3.2.min.js"|baseurl }}"></script>
+<script type="text/javascript" src="{{ "media/theme/"|cat:theme|cat:"/js/jquery-ui-1.7.1.custom.min.js"|baseurl }}"></script>
+{% else %}
+<link type="text/css" href="{{ "media/theme/default/css/custom-theme/jquery-ui-1.7.1.custom.css"|baseurl }}" rel="stylesheet" />	
+<script type="text/javascript" src="{{ "media/js/jquery-1.3.2.min.js"|baseurl }}"></script>
+<script type="text/javascript" src="{{ "media/theme/default/js/jquery-ui-1.7.1.custom.min.js"|baseurl }}"></script>
+{% endif %}
+<script type="text/javascript" src="{{ "media/js/jquery.cookie.js"|baseurl }}"></script>
+<script type="text/javascript" src="{{ "media/js/jquery.tooltip.min.js"|baseurl }}"></script>
+<script type="text/javascript" src="{{ "media/js/jquery.tablesorter.min.js"|baseurl }}"></script>
+<script type="text/javascript">
+$(function(){	
+	// Accordion
+	$("#accordion").accordion({ header: "h3" });
+	
+	//Tabs
+	$('#tabs').tabs({ cookie: { path: {{ ""|baseurl }}, name: "washtub-tabs" }, 
+			          ajaxOptions: { cache: false }
+	});
+	$('#tabs').bind('tabsshow', function(event, ui) {
+		$.tablesorter.defaults.widgets = ['zebra']; 
+		//Call Table Sorter
+		//This is hackish, but zebra widgets don't refresh automagically after
+		// ajax responses in tables
+		//A better solution would be to check the active tab and only instantiate
+		//the tablesorters that we need (speed enhancement)
+		$("#aliveTable").tablesorter();
+		$("#onAirTable").tablesorter();
+		$("#queueTable0").tablesorter();
+		$("#queueTable1").tablesorter();
+		$("#historyTable0").tablesorter();
+		$("#historyTable1").tablesorter();
+		$("#poolTable").tablesorter();
+	});
+		
+	{% block tabselect %}
+	{% endblock tabselect %}
+
+	// Dialog			
+	$('#dialog_scan').dialog({
+		autoOpen: false,
+		width: 350,
+		buttons: {
+			"Ok": function() { 
+				$(this).dialog("close");
+				window.location="{% url mediapool.views.file_scanner %}";
+			}, 
+			"Cancel": function() { 
+				$(this).dialog("close"); 
+			} 
+		}
+	});
+	
+	// Dialog Link
+	$('#dialog_scan_link').click(function(){
+		$('#dialog_scan').dialog('open');
+		return false;
+	});
+
+});
+function GetHostStatus()
+{
+	var hostlist = document.getElementById("HostList");
+	var myhost = hostlist.options[hostlist.selectedIndex].text;
+	if (myhost == "----------")
+	{
+		window.location="{{ ""|baseurl }}";
+	}
+	else
+	{
+		window.location="{{ "status/"|baseurl }}"+myhost;
+	}
+}
+</script>
+<script type="text/javascript" src="{{ "media/js/main.js"|baseurl }}"></script>
+{% block extrahead %}
+{% endblock extrahead %}
+</head>
+<body>
+<div class="header">
+  <div class="status"> 
+    {% block userstatus %}
+      {% if user.is_authenticated %}
+        Hello {{ user.first_name }}!&nbsp;<a class="action" href="{% url django.contrib.auth.views.logout_then_login %}">Logout?</a> 
+      {% else %}
+        Please <a href="{% url django.contrib.auth.views.login %}" >log-in</a> to continue....<a class="action" href="{% url django.contrib.auth.views.password_reset %}">Retrieve Password</a>
+      {% endif %}
+    {% endblock userstatus %}
+  </div>
+  <div class="navigation">
+    <select id="HostList" onchange="GetHostStatus()">
+    <option>----------</option>
+    {% if user.is_authenticated %}
+    {% for name in hosts %}{% ifequal name active_host %}<option selected="yes">{% else %}<option>{% endifequal %}{{ name }}</option>{% endfor %}
+    {% endif %}
+    </select>
+   	&nbsp;<a class="menu" href="{{ ""|baseurl }}">Home</a>
+    {% if user.is_staff %}
+    <b>{% filter force_escape %}::{% endfilter %}</b> 
+    <a class="menu" href="{{ "admin"|baseurl }}">Administration Panel</a>
+    <b>{% filter force_escape %}::{% endfilter %}</b> 
+    <a class="menu" id="dialog_scan_link" href="#">Scan Media</a>
+    {% endif %}
+  </div>  
+</div>
+
+{% block errormessage %}
+   {% if error %}
+	 <div class="ui-widget">
+		<div class="ui-state-error ui-corner-all" style="padding: 0 .7em;"> 
+			<p><span class="ui-icon ui-icon-alert" style="float: left; margin-right: .3em;"></span> 
+			<strong>Alert:</strong> {{ error }}</p>
+		</div>
+	 </div>
+   {% endif %}
+{% endblock errormessage %}
+
+
+{% block alertmessage %}
+  {% if alert %}
+	 <div class="ui-widget">
+		<div class="ui-state-highlight ui-corner-all" style="padding: 0 .7em;"> 
+			<p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span> 
+			<strong>Notice:</strong> {{ alert }}</p>
+		</div>
+	 </div>
+  {% endif %}
+{% endblock alertmessage %}
+ 
+{% block content %}
+{% endblock content %}
+
+<!-- ui-dialog -->
+		<div id="dialog_scan" title="Scan Media Pool?">
+			<p><b>Please confirm before scanning the Media Pool.</b>  The media scanning 
+			process can be slow.  Do not refresh the page or initiate scanning repeatedly.  
+			There is nothing preventing the scan process(es) from trailing off into neverland.</p>
+		</div>
+
+</body>
+</html>

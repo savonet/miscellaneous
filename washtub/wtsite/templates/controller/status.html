@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% comment %}
+    Copyright (c) 2009, Chris Everest 
+    This file is part of Washtub.
+
+    Washtub is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Washtub is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Washtub.  If not, see <http://www.gnu.org/licenses/>.
+{% endcomment %}
+
+{% load controller_extras %}
+
+{% block title %}
+   Washtub Liquidsoap Controller : {{ active_host }}
+{% endblock title %}
+{% block tabsetup %}
+	$('#tabs').tabs();
+{% endblock tabsetup %}
+{% block content %}<div id="tabs">
+			    <ul>
+			    	<li><a href="{% url controller.views.display_nodes active_host %}" title="status-tab">Status</a></li>
+			    	<li><a href="{% url controller.views.display_queues active_host %}" title="queues-tab">Queues</a></li>
+			    	{% if search %}
+			    		<li><a href="{% url controller.views.search_pool_page active_host pool_page %}?{{ query_string }}"  title="search-tab">Search</a></li>
+			    	{% else %}
+			    		<li><a href="{% url controller.views.display_pool_page active_host "song" pool_page %}"  title="pool-tab">Pool</a></li>
+			    	{% endif %}
+			    	<li><a href="{% url controller.views.display_history active_host %}" title="history-tab">History</a></li>
+			    	<li><a href="{% url controller.views.display_help active_host %}" title="help-tab">Help</a></li>
+			    </ul>
+				</div>
+			</div>
+{% comment %}			
+<div id="tabs-1">
+</div>
+   <div id="tabs-2">
+</div>
+   <div id="tabs-3">
+</div>
+   <div id="tabs-4">
+</div>
+   <div id="tabs-5">
+</div>
+<div id="accordion">
+  <div>
+	<h3><a href="#">Server Tools</a></h3>
+		<div>
+		    Tools.
+		</div>
+  </div>
+  <div>
+	<h3><a href="#">Second</a></h3>
+		<div>Phasellus mattis tincidunt nibh.</div>
+  </div>
+
+  <div>
+	<h3><a href="#">Third</a></h3>
+		<div>Nam dui erat, auctor a, dignissim quis.</div>
+	</div>
+</div>
+{% endcomment %}
+{% endblock content %}

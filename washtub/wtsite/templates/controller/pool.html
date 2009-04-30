@@ -1,0 +1,112 @@
+{% comment %}
+    Copyright (c) 2009, Chris Everest 
+    This file is part of Washtub.
+
+    Washtub is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Washtub is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Washtub.  If not, see <http://www.gnu.org/licenses/>.
+{% endcomment %}
+
+{% block tabselect %}
+	{% comment %} $('#tabs').tabs('select', 2); {% endcomment %}
+{% endblock tabselect %}
+
+<script type="text/javascript">
+$('#poolTable tr').tooltip();
+</script>
+    <form class="searchform" action="{% url controller.views.display_status active_host %}" method="GET">
+	<input class="searchbox" type="text" name="search"></input>
+	<input type="hidden" name="type" value="song"></input>
+	<button class="ui-state-default ui-corner-all" type="submit" value="submit">search</button>
+	</form>
+{% block pooltab %}
+  	<b>Available Media(</b><i>{{ all_pages.count }} items found</i><b>):</b><br/>
+	<table id="poolTable" class="tablesorter"> 
+	<thead> 
+	<tr> 
+	    <th class="track">#</th> 
+	    <th class="title">Title</th> 
+	    <th class="artist">Artist</th> 
+	    <th class="album">Album</th> 
+	    <th class="genre">Genre</th>
+	    <th class="lastplay">Last Played</th>
+	    <th class="ops">Ops</th> 
+	</tr>
+  	</thead>
+  	<tbody>
+  	{% if single_page.object_list %}
+  		{% for entry in single_page.object_list %}
+		<tr>
+			{% comment %}
+			<tooltip>
+			<label value="title:{{ entry.title }}"/>
+			<label value="artist: {{ entry.artist }}"/>
+			<label value="album: {{ entry.album }}"/>
+			<label value="track: {{ entry.track }}"/>
+			<label value="genre: {{ entry.genre }}"/>
+			</tooltip>
+			{% endcomment %}
+			<td class="track">{{ entry.track }}</td>
+			<td>{{ entry.title|truncatewords:4 }}</td>
+			<td>{{ entry.artist }}</td>
+			<td>{{ entry.album|truncatewords:4 }}</td>
+			<td>{{ entry.genre }}</td>
+			{% if entry.lastplay %}
+				<td>{{ listing.on_air }} {% now "T" %}</td>
+			{% else %}
+				<td></td>
+			{% endif %}
+			<td class="ops">
+			<form name="queue_add_{{ entry.id }}" action="{% url controller.views.queue_push active_host %}" method="POST">
+			<select name="queue" onchange="this.form.submit();">
+			<option>&lt;add to queue&gt;</option>
+			{% for item, type in node_list.items %}
+				{% ifequal type "queue" %}
+				<option value="{{ item }}">{{ item }}</option>
+				{% endifequal %}
+				{% ifequal type "editable" %}
+				<option value="{{ item }}">{{ item }}</option>
+				{% endifequal %}
+			{% endfor %}
+			</select>
+			<input type="hidden" name="uri" value="{{ entry.id }}">
+			</form>
+			</td>
+		</tr>
+	  	{% endfor %}
+	{% else %}
+		<tr>
+		<td colspan="7">Search did not yield any results</td>
+		</tr>
+	{% endif %}
+  	</tbody>
+  	</table>
+ 	{% block pagination %}
+ 	  	<div class="pagination"> 
+		<span class="pagination-pre">
+		{% if single_page.has_previous %}
+			&larr;<a href="{% url controller.views.display_status active_host %}?pg={{ single_page.previous_page_number }}">previous</a>
+		{% endif %}
+		</span>
+		{% if single_page.number %}
+		<span class="pagination-count">page {{ single_page.number }} of {{ single_page.paginator.num_pages }}</span>
+		{% endif %}
+		<span class="pagination-next">
+		{% if single_page.has_next %}
+			<a href="{% url controller.views.display_status active_host %}?pg={{ single_page.next_page_number }}">next</a>&rarr;
+		{% endif %}
+	
+		</span>
+	</div>
+	{% endblock pagination %}
+
+{% endblock pooltab %}
