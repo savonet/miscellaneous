@@ -214,7 +214,7 @@ let command_of_string s =
 
 let string_of_command c =
   match c with
-    | Cmd_generic s -> "'" ^ s ^ "'" 
+    | Cmd_generic s -> "'" ^ s ^ "'"
     | _ ->
         try
           Array.iter (function (s, d) -> if c = d then raise (Str_found s)) command_table;
@@ -426,7 +426,7 @@ let filter_stupid_mirc_color_codes s =
     else match u with parser
       | [< ''0'..'9'; v >] -> loop1 (x + 1) v
       | [< '','; v >] -> loop1 0 v
-      | [< ''\001'|'\002'|'\026'|'\037'|'\017'|'\007'; v >] -> loop0 v 
+      | [< ''\001'|'\002'|'\026'|'\037'|'\017'|'\007'; v >] -> loop0 v
       | [< 'c >] -> add c loop0
       | [< >] -> terminate ()
   in
@@ -584,13 +584,18 @@ object (self)
     self#say dest (encode_ctcp ("PING " ^ Printf.sprintf "%.4f" timestamp))
 
   method connect =
-    let host = Unix.gethostbyname server_ in
-    let addr = Unix.ADDR_INET(host.Unix.h_addr_list.(0), port) in
-    let i_c, o_c = Unix.open_connection addr in
-      ic <- i_c;
-      oc <- o_c;
-      self#change_user nick_ host_ user_;
-      self#change_nick nick_
+    let hosts = Unix.getaddrinfo server_ (string_of_int port) [] in
+    let connect addr =
+      let i_c, o_c = Unix.handle_unix_error Unix.open_connection addr in
+        ic <- i_c;
+        oc <- o_c;
+        self#change_user nick_ host_ user_;
+        self#change_nick nick_ in
+    let rec choose = function
+      | []    -> raise Not_found
+      | h::[] -> connect h.Unix.ai_addr
+      | h::t  -> try connect h.Unix.ai_addr with _ -> choose t
+    in choose hosts
 
   method disconnect =
     Unix.shutdown_connection ic
@@ -816,13 +821,18 @@ struct
     send_command Cmd_part [|chan|]
 
   let connect () =
-    let host = Unix.gethostbyname P.server in
-    let addr = Unix.ADDR_INET(host.Unix.h_addr_list.(0), P.port) in
-    let i_c, o_c = Unix.open_connection addr in
-      ic := i_c;
-      oc := o_c;
-      change_user P.nick P.host P.user;
-      change_nick P.nick
+    let hosts = Unix.getaddrinfo P.server (string_of_int P.port) [] in
+    let connect addr =
+      let i_c, o_c = Unix.handle_unix_error Unix.open_connection addr in
+        ic := i_c;
+        oc := o_c;
+        change_user P.nick P.host P.user;
+        change_nick P.nick in
+    let rec choose = function
+      | []    -> raise Not_found
+      | h::[] -> connect h.Unix.ai_addr
+      | h::t  -> try connect h.Unix.ai_addr with _ -> choose t
+    in choose hosts
 
   let disconnect () =
     Unix.shutdown_connection !ic
