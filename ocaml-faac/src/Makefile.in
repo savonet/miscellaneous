@@ -27,6 +27,7 @@ SOURCES = faac.mli faac.ml faac_stubs.c
 RESULT = faac
 OCAMLDOCFLAGS = -stars
 LIBINSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmxa *.cmx *.a *.so)
+LDFLAGS = @LDFLAGS@
 ACLIBS = @LIBS@
 CLIBS = $(ACLIBS:-l%=%)
 LIBDIRS = $(LDFLAGS:-L%=%)
