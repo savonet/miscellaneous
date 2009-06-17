@@ -34,6 +34,7 @@ CPPFLAGS = @CPPFLAGS@
 CLIBS := @LIBS@
 CLIBS := $(CLIBS:-l%=%)
 NO_CUSTOM = yes
+OCAMLFLAGS = @OCAMLFLAGS@
 
 all: $(BEST)
 byte: bcl

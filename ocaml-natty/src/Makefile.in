@@ -26,6 +26,7 @@ OCAMLDOCFLAGS = -stars
 LIBINSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmxa *.cmx *.a *.so)
 OCAMLDOCFLAGS = -I `ocamlfind -query bitstring`
 NO_CUSTOM = yes
+OCAMLFLAGS = @OCAMLFLAGS@
 
 all: $(BEST)
 

@@ -23,6 +23,7 @@ RESULT = ftp
 LIBINSTALL_FILES = $(wildcard *.mli *.cmi *.cma *.cmxa *.cmx *.a *.so)
 OCAMLLDFLAGS =
 NO_CUSTOM = yes
+OCAMLFLAGS = @OCAMLFLAGS@
 
 all: $(BEST)
 

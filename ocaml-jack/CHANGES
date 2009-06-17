@@ -1,5 +1,6 @@
 0.1.1 (unreleased)
 =====
+* Added support for --enable-debugging configure option
 * Put operations on ringbuffers in blocking sections.
 
 0.1.0 (2007-10-23)

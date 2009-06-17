@@ -119,6 +119,15 @@ fi
 
 AC_PATH_PROG(OCAMLDOC,ocamldoc,no)
 
+AC_ARG_ENABLE([debugging],
+   AC_HELP_STRING(
+      [--enable-debugging],
+      [compile with debugging information (backtrace printing in particular)]))
+
+if test "x$enable_debugging" = "xyes" ; then
+  OCAMLFLAGS="$OCAMLFLAGS -g"
+fi
+
 AC_PATH_PROG(OCAMLMKTOP,ocamlmktop,no)
 if test "$OCAMLMKTOP" = no ; then
 	AC_MSG_ERROR(Cannot find ocamlmktop.)
@@ -204,6 +213,7 @@ fi
 AC_SUBST(VERSION)
 AC_SUBST(OCAMLC)
 AC_SUBST(OCAMLOPT)
+AC_SUBST(OCAMLFLAGS)
 AC_SUBST(BEST)
 AC_SUBST(OCAMLDEP)
 AC_SUBST(OCAMLLEX)

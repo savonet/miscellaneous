@@ -1,5 +1,6 @@
 0.1.0 (unreleased)
 =====
+* Added support for --enable-debugging configure option
 
 0.1.0
 =====
