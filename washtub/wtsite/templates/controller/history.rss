@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+{% comment %}
+    Copyright (c) 2009, Chris Everest 
+    This file is part of Washtub.
+
+    Washtub is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Washtub is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Washtub.  If not, see <http://www.gnu.org/licenses/>.
+{% endcomment %}
+
+{% load controller_extras %}
+<rss version="2.0">
+	<channel>
+	<title>{{ active_host }} - Recent Playlist History</title>
+	<description>History detail for {{ active_host }} stream.</description>
+	<language>en-us</language>
+	<generator>Washtub Liquidsoap Controller</generator> 
+{% for name, entries in history.items %}
+  	{% for e in entries reversed%}
+  		{% for rid, listing in metadata_storage.items %}
+  			{% ifequal e rid %}
+  				<item>
+  					<title>"{{ listing.title }}" by {{ listing.artist }}</title>
+  					<link>{{ ""|serverurl }}{% url controller.views.display_status active_host %}{{ "?search="|cat:listing.title|cat:"&type=song#search-tab" }}</link>
+  					<description>
+  					artist: {{ listing.artist }} <br/>
+  					title: "{{ listing.title }}" <br/>
+  					album: {{ listing.album }} <br/>
+  					airtime: {{ listing.on_air|date:"D d M Y" }} {{ listing.on_air|time:"H:i:s" }} {% now "T" %} <br/>
+  					</description>
+  					{% if listing.on_air %}
+  					<pubDate>{{ listing.on_air|date:"D d M Y" }} {{ listing.on_air|time:"H:i:s" }} {% now "T" %}</pubDate>
+  					{% endif %}
+  				</item>
+  			{% endifequal %}
+    	 {% endfor %}
+    {% endfor %}
+{% endfor %}
+
+</channel>
+</rss>
