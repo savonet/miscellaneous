@@ -49,7 +49,8 @@ $(function(){
 	
 	//Tabs
 	$('#tabs').tabs({ cookie: { path: {{ ""|baseurl }}, name: "washtub-tabs" }, 
-			          ajaxOptions: { cache: false }
+			          ajaxOptions: { cache: false },
+			          spinner: 'Loading...' 
 	});
 	$('#tabs').bind('tabsshow', function(event, ui) {
 		$.tablesorter.defaults.widgets = ['zebra']; 

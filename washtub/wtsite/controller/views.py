@@ -24,12 +24,20 @@ from django.http import QueryDict
 from django.db.models import Q
 from django.template import RequestContext
 from wtsite.controller.models import *
+from wtsite.controller.templatetags.controller_extras import *
 from wtsite.mediapool.models import *
 from wtsite.mediapool.views import *
+import telnetlib, string, time, datetime, threading
+from datetime import datetime
+from threading import Thread
 
-import telnetlib, string, time
 
-# Create your views here.
+############################################################################
+#	Begin 'Utility' Functions
+#	These are discrete utilities that interact with the liquidsoap server  
+#	These are not called directly by urls.py
+############################################################################
+
 def parse_command(host, host_settings, command):
 	port = None
 	for p in host_settings:
@@ -39,10 +47,13 @@ def parse_command(host, host_settings, command):
 	if not port:
 		port = '1234' 
 	command+='\n'
-	tn = telnetlib.Telnet(str(host.ip_address), port)
-	tn.write(command)
-	response = tn.read_until("END")
-	tn.close()
+	try:
+		tn = telnetlib.Telnet(str(host.ip_address), port)
+		tn.write(command)
+		response = tn.read_until("END")
+		tn.close()
+	except:
+		response = ''
 	return response
 
 
@@ -54,7 +65,12 @@ def parse_metadata(host, host_settings, rid):
 		m = m.split('=')
 		if len(m) > 1:
 			if m[0] != 'END':
-				metadata[m[0]] = m[1].strip('"')
+				if m[0] == 'on_air':
+					datestring = m[1].strip('"')
+					mydate = datetime.strptime(datestring, "%Y/%m/%d %H:%M:%S")
+					metadata[m[0]] = mydate
+				else:
+					metadata[m[0]] = m[1].strip('"')
 	return metadata
 
 def parse_queue_metadata(host, host_settings, queue, storage):
@@ -174,6 +190,11 @@ def get_host_list():
 	h = Host.objects.all()
 	return h   
 
+############################################################################
+#	Begin Main 'Display' Functions
+#	Functions that display main pages with full layouts
+############################################################################
+
 def index (request):
 	hosts = get_host_list()
 	return render_to_response('index.html', {'hosts': hosts}, context_instance=RequestContext(request))
@@ -210,6 +231,41 @@ def display_status(request, host_name):
 		logging.info('End of display_status() with POST')
 		return
 
+def display_error(request, host_name, template, msg):		
+	host = get_object_or_404(Host, name=host_name)
+	host_settings = get_list_or_404(Setting, hostname=host)
+	t = Theme.objects.get(host__name__exact=host_name)
+	pg_num=1
+	template_dict = {}
+	template_dict['error'] = msg
+	template_dict['search'] = False
+	template_dict['pool_page'] = pg_num
+	template_dict['active_host'] = host
+	template_dict['hosts'] = get_host_list()
+	template_dict['theme'] = t.name
+	return render_to_response(template, template_dict, context_instance=RequestContext(request))
+
+def display_alert(request, host_name, template, msg):		
+	host = get_object_or_404(Host, name=host_name)
+	host_settings = get_list_or_404(Setting, hostname=host)
+	t = Theme.objects.get(host__name__exact=host_name)
+	pg_num=1
+	template_dict = {}
+	template_dict['alert'] = msg
+	template_dict['search'] = False
+	template_dict['pool_page'] = pg_num
+	template_dict['active_host'] = host
+	template_dict['hosts'] = get_host_list()
+	template_dict['theme'] = t.name
+	return render_to_response(template, template_dict, context_instance=RequestContext(request))
+
+############################################################################
+#	Begin Asynchronous 'Display' Functions
+#	Functions that display discrete data
+#	Minimal table views created for individual tabs
+#	All are called directly by urls.py
+############################################################################	
+	
 @login_required	
 def display_nodes(request, host_name):
 	logging.info('Start of display_nodes()')
@@ -266,8 +322,7 @@ def display_queues(request, host_name):
 	template_dict['metadata_storage'] = parse_queue_metadata(host, host_settings, queue, metadata_storage)
 	template_dict['queue'] = queue
 	return render_to_response('controller/queues.html', template_dict, context_instance=RequestContext(request))
-
-@login_required	
+	
 def display_history(request, host_name):
 	host = get_object_or_404(Host, name=host_name)
 	host_settings = get_list_or_404(Setting, hostname=host)
@@ -280,9 +335,23 @@ def display_history(request, host_name):
 	
 	#Get 'history' Listing and Grab Metadata for it.
 	history = parse_history(host, host_settings, node_list)
+	template_dict['active_host'] = host
 	template_dict['metadata_storage'] = parse_queue_metadata(host, host_settings, history, metadata_storage)
 	template_dict['history'] = history
-	return render_to_response('controller/history.html', template_dict, context_instance=RequestContext(request))
+	
+	if request.method == 'GET':
+		try:
+			 format = request.GET['format']
+			 if (format == 'rss'):
+			 	template_file = 'history.rss'
+			 	mime_output = 'application/rss+xml'
+		except:
+			template_file = 'history.html'
+			mime_output = 'text/html'
+	else:
+		 template_file = 'history.html'
+		 mime_output = 'text/html'
+	return render_to_response('controller/'+template_file, template_dict, context_instance=RequestContext(request), mimetype=mime_output)
 
 @login_required	
 def display_help(request, host_name):
@@ -295,34 +364,6 @@ def display_help(request, host_name):
 	#Parse all available help commands (for reference)	
 	template_dict['help'] = parse_help(host, host_settings)
 	return render_to_response('controller/help.html', template_dict, context_instance=RequestContext(request))
-
-def display_error(request, host_name, template, msg):		
-	host = get_object_or_404(Host, name=host_name)
-	host_settings = get_list_or_404(Setting, hostname=host)
-	t = Theme.objects.get(host__name__exact=host_name)
-	pg_num=1
-	template_dict = {}
-	template_dict['error'] = msg
-	template_dict['search'] = False
-	template_dict['pool_page'] = pg_num
-	template_dict['active_host'] = host
-	template_dict['hosts'] = get_host_list()
-	template_dict['theme'] = t.name
-	return render_to_response(template, template_dict, context_instance=RequestContext(request))
-
-def display_alert(request, host_name, template, msg):		
-	host = get_object_or_404(Host, name=host_name)
-	host_settings = get_list_or_404(Setting, hostname=host)
-	t = Theme.objects.get(host__name__exact=host_name)
-	pg_num=1
-	template_dict = {}
-	template_dict['alert'] = msg
-	template_dict['search'] = False
-	template_dict['pool_page'] = pg_num
-	template_dict['active_host'] = host
-	template_dict['hosts'] = get_host_list()
-	template_dict['theme'] = t.name
-	return render_to_response(template, template_dict, context_instance=RequestContext(request))
 
 @login_required	
 def display_pool_page(request, host_name, type, page):
@@ -434,6 +475,13 @@ def search_pool_page(request, host_name, page):
 		logging.info('End of search_pool_page() with POST')
 		return display_error(request, host_name, 'controller/pool.html', message)
 
+############################################################################
+#	Begin 'Action' Functions
+#	Functions act on liquidsoap servers 
+#	START, STOP, PUSH, ETC...
+#	All are called directly by urls.py
+############################################################################
+	
 @login_required
 def stream_skip(request, host_name, stream):
 	host = get_object_or_404(Host, name=host_name)
@@ -443,7 +491,7 @@ def stream_skip(request, host_name, stream):
 		response = parse_command(host, host_settings, '%s.skip' % (str(stream)))
 		response = response.splitlines()
 		if('Done' in response):
-			time.sleep(1.5)
+			#time.sleep(0.75)
 			return HttpResponseRedirect('/'+settings.BASE_URL+'status/'+host_name)
 		else:
 			return HttpResponse(status=404)
@@ -510,8 +558,73 @@ def queue_push(request, host_name):
 		
 		#commit the command
 		response = parse_command(host, host_settings, queue_command)
-		return HttpResponseRedirect('/'+settings.BASE_URL+'status/'+host_name)		
+		referer = request.META['HTTP_REFERER']
+		return HttpResponseRedirect(request.META['HTTP_REFERER'])		
 	else:
 		#return message about Get with bad parameters.
 		message = 'Requests cannot be pushed via GET requests.'
 		return display_error(request, host_name, 'controller/status.html', message)
+
+def commit_log(host_name):
+	# sleep a certain amount of time 
+	# to allow 'on_air' metadata to register 
+	# the possibility of a new track.
+	time.sleep(0.5)
+	
+	host = get_object_or_404(Host, name=host_name)
+	host_settings = get_list_or_404(Setting, hostname=host)	#Get active nodes for this host and this liquidsoap instance
+	
+	node_list = parse_node_list(host, host_settings)
+	#Instantiate a dictionary for Metadata, RIDs will reference this dictionary.
+	air_queue = {}
+	history = {}
+	metadata_storage = {}
+
+	#Get 'on_air' Queue and Grab Metadata for it
+	air_queue['on_air'] = parse_rid_list(host, host_settings, "on_air")
+	metadata_storage = parse_queue_metadata(host, host_settings, air_queue, metadata_storage)
+	
+	#Get 'history' and Grab Metadata for it
+	history = parse_history(host, host_settings, node_list)
+	metadata_storage = parse_queue_metadata(host, host_settings, history, metadata_storage)
+			
+	for name, entries in history.iteritems():
+		name = replacedot(name)
+		for i, e in enumerate(reversed(entries)): #reverse for descending order
+			if i == 0: #only write log entry for the latest on_air entry							
+				for rid, listing in metadata_storage.iteritems():
+					if e == rid:
+						#this is the 'latest' on_air entry and 
+						#it matches a metadata listing
+						try:
+							log = Log.objects.get(Q(entrytime__exact=listing['on_air']),
+												  Q(stream__exact=name))
+						except Log.DoesNotExist:
+							try:
+								results = Song.objects.filter(Q(title__iexact=listing['title']),
+								  Q(artist__name__iexact=listing['artist']),
+								  Q(album__name__iexact=listing['album']),
+								  Q(genre__name__iexact=listing['genre'])).distinct()[0]
+								id = results.id
+							except(IndexError):
+								id = -1
+							log = Log(
+						    	entrytime = listing['on_air'],
+						    	info = 'RADIO_HISTORY',
+						    	host = host,
+						    	stream = name,
+						    	song_id = id,
+						    	title = listing['title'],
+						    	artist = listing['artist'],
+						    	album = listing['album'],
+								)
+							log.save()
+	
+def write_log(request, host_name):
+	if request.method == 'GET':		
+		t = Thread(target=commit_log, args=[host_name])
+		t.setDaemon(True)
+		t.start()
+		return render_to_response('controller/log.html', {}, context_instance=RequestContext(request))
+	else:
+		return HttpResponse(status=500)

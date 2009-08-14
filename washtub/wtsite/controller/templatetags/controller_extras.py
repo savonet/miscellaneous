@@ -16,6 +16,7 @@
 
 from django.template.defaultfilters import stringfilter
 from django.conf import settings
+from django.utils.encoding import smart_str
 from django import template
 import string
 
@@ -29,13 +30,17 @@ def replacedot(value):
 @register.filter("cat")
 @stringfilter
 def cat(value, string):
-	return value+string
+	return value+smart_str(string)
 
 @register.filter("baseurl")
 @stringfilter
 def baseurl(value):
 	return '/'+settings.BASE_URL+value
 
+@register.filter("serverurl")
+@stringfilter
+def serverurl(value):
+	return settings.SERVER_NAME+value
 
 @register.filter("tominutes")
 def tominutes(value):

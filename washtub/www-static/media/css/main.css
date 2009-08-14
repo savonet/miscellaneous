@@ -391,4 +391,22 @@ table.tablesorter td.remaining {
 .ui-tabs {
 	min-height: 450px;
 }
+
+.quickstatus {
+	margin-top:10px;
+	width:295px;	
+}
+
+.quickstatus .ui-widget-header {
+	text-transform:uppercase;
+}
+.quickstatus .ui-widget-header, .quickstatus .ui-widget-content {
+	padding:5px;
+}
+
+.quickstatus .ui-widget-content {
+	border-top:0px;
+}
+
+
 /*** End of file ***/

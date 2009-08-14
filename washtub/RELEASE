@@ -1,3 +1,9 @@
+.013  08/14/2009
+	- Added log table to database application to retain history long-term.
+	- Added rss format to liquidsoap history display for feed aggregation.
+		url usage: "/status/history/<host>?format=rss"
+	- Changed queue_push (request processing) to redirect to referring page for better usability.
+
 0.12  04/30/2009
 	- Cleaned up main.css to remove extraneous elements that are no longer used.
 	- Add GPLv2 licensing to the project

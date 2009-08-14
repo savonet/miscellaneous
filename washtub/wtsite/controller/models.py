@@ -17,6 +17,9 @@
 from django.db import models
 from django.contrib.auth.models import User, Group
 from django.utils.encoding import *
+import datetime
+from datetime import datetime
+
 # Create your models here.
 class Theme(models.Model):
     name = models.CharField(max_length=64, unique=True)
@@ -54,3 +57,21 @@ class Setting(models.Model):
         ordering = ['hostname', 'value']
         verbose_name = "Setting"
         verbose_name_plural = "Settings"
+        
+class Log(models.Model):
+    entrytime = models.DateTimeField(editable=False)
+    info = models.CharField(max_length=48, editable=False)
+    host = models.CharField(max_length=255, editable=False)
+    stream = models.CharField(max_length=128, editable=False)
+    song_id = models.IntegerField(default=-1, editable=False)
+    title = models.CharField(max_length=765, editable=False)
+    artist = models.CharField(max_length=765, editable=False)
+    album = models.CharField(max_length=765, editable=False)
+
+    def simple_entrytime(self):
+        return self.entrytime.strftime('%Y-%m-%d %H:%M:%S')
+    
+    class Meta:
+        ordering = ['-entrytime']
+        verbose_name_plural = "Log Entries"
+    
