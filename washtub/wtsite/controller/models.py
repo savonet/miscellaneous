@@ -29,7 +29,7 @@ class Theme(models.Model):
 
 class Host(models.Model):
     name = models.CharField(max_length=128)
-    ip_address = models.IPAddressField('Server IP Address')
+    ip_address = models.IPAddressField('Liquidsoap IP Address')
     base_url = models.URLField(verify_exists=False)
     theme = models.ForeignKey(Theme)
     description = models.TextField('Description', blank=True)

@@ -1,0 +1,107 @@
+For help with this install, please join the savonet users mailing list at:
+
+https://lists.sourceforge.net/lists/listinfo/savonet-users
+
+Make sure that you have all the dependencies installed on the apache host machine.
+Apache, Mod Python, TagPy, Django are all necessary to get washtub working.  Once
+all these are installed, continue on with the installation. Liquidsoap can theoretically
+be running anywhere that is network accessible from the washtub instance.
+
+Download the washtub svn from the savonet project.
+
+	svn co https://savonet.svn.sourceforge.net/svnroot/savonet/trunk/washtub washtub
+
+Copy the directory to a permanent location on the filesystem (I like /usr/share )
+
+	cp washtub /usr/share -R  
+
+Copy the washtub-apache-dist.conf into the apache conf directory to setup 
+the django/python environment.
+
+	cp /usr/share/washtub/washtub-apache-dist.conf \
+	   /etc/apache2/sites-available/washtub.conf
+
+Edit the new washtub.conf file with your own options.  Then link to it in 
+the 'sites-enabled' directory.
+
+	ln -s /etc/apache2/sites-available/washtub.conf /etc/apache2/sites-enabled/
+
+Copy the washtub/django settings-disy.py to a permanent settings.py file.  Edit
+the new settings.py to match the options in washtub/apache configuration
+
+	cp /usr/share/washtub/wtsite/settings-dist.py \
+	   /usr/share/washtub/wtsite/settings.py
+	vi /usr/share/washtub/wtsite/settings.py
+	
+If you want to access local media on the washtub host, be sure to set the mediapool
+path in settings.py.  Also, make sure this dir is writable by the apache user 
+*and* the liquidsoap user. At this time, only mp3 and flac are supported on washtub.
+	
+	MEDIAPOOL_PATH = '/full/path/to/mediapool/dir' 
+	
+At this point, washtub should be configured.  Now setup the database using 
+the internal django tools.
+
+	python /usr/share/washtub/wtsite/manage.py syncdb
+	
+Now restart apache to enable the new configuration file. 
+NOTE:  You have to restart apache everytime you make changes to the 
+settings.py or the washtub.conf files.
+
+	/etc/init.d/apache2 restart
+
+We still have to connect washtub to your liquidsoap instance.  Make sure 
+that telnet is enabled in your liquidsoap script via:
+
+	# Enable Telnet
+	set("server.telnet",true)
+	set("server.telnet.bind_addr","127.0.0.1")
+	
+You can also setup queues in liquidsoap to control from washtub.  The 'id' 
+parameter is very important to specify how washtub will control queues.
+
+	admin_request = request.queue(id="admin_request")
+	public_request = request.equeue(id="public_request")
+	myplaylist = fallback(track_sensitive=false,
+                                   [admin_request,
+                                    public_request,
+                                    myplaylist])
+                                    
+Browse to http://localhost and hopefully your site is live.  Now, let's connect
+washtub to liquidsoap.  Login to washtub using the super password that manage.py
+asked you for.	Add a host to the admin interface using the following settings.
+	
+	Name:  Human readable name
+	IP Address: Address of liquidsoap telnet bind address
+	Base Url: http://your-icecast-server:8000
+	Theme: click the '+' to add a new theme 'default'
+
+Now add some entries to the settings table to correspond to the new host.
+
+	Value 		Data 	Hostname
+	port		1234	your-liquidsoap-hostname
+	protocol	telnet	your-liquidsoap-hostname
+	
+If you setup queues in liquidsoap, you need to specify some settings that will
+washtub to control them specifically.
+
+	Value 		Data 			Hostname
+	queue_id    liq-queue-id  your-liquidsoap-hostname
+	queue_id    liq-queue-id  your-liquidsoap-hostname
+	
+And that should get things up and running.  For troubleshooting, try browinng to 
+these urls to check that washtub is actually working.  In addition to byypassing
+the ajax call, this will also present django debug messages if the urls fail.
+
+	Media Pool Scan -> /mediapool/scan
+	Node Status -> /status/nodes/<liquidsoap_hostname>
+	Queue Status -> /status/queues/<liquidsoap_hostname>
+	History -> /status/history/<liquidsoap_hostname>
+	Help -> /status/help/<liquidsoap_hostname>
+
+	Pool Display ->
+	/pool/<liquidsoap_hostname>/song/1  #this would display page 1
+	/pool/<liquidsoap_hostname>/song     #this would display all without any paging
+
+
+Good Luck.  

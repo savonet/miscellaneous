@@ -1,4 +1,4 @@
-.013  08/14/2009
+0.13  08/14/2009
 	- Added log table to database application to retain history long-term.
 	- Added rss format to liquidsoap history display for feed aggregation.
 		url usage: "/status/history/<host>?format=rss"
