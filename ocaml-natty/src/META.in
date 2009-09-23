@@ -1,6 +1,0 @@
-name="natty"
-version="@VERSION@"
-description="OCaml bindings for OCaml-natty"
-requires="@requires@"
-archive(byte)="natty.cma"
-archive(native)="natty.cmxa"
