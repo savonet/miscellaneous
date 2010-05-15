@@ -3,7 +3,7 @@ set -e
 
 INST_DIR="/usr/local/bin"
 DIST="*.in liq-contrib.1 CHANGES COPYING install.sh"
-VERSION="08.11"
+VERSION="SVN"
 
 # Dummy install script for liquidsoap utils.
 # Usage: install --install [ /path/to/install/directory ]

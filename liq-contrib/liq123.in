@@ -35,6 +35,9 @@ usage =
 %ifdef lastfm.submit
 "[ -s user ] " ^
 %endif
+%ifdef librefm.submit
+"[ -s user ] " ^
+%endif
 "[ -r ] [ -f ] [ -d ] [ http://... " ^
 %ifdef lastfm.submit
 "| lastfm://... " ^
@@ -45,6 +48,10 @@ usage =
 %ifdef lastfm.submit
 "* -s option is for optional lastfm submission, 
   password request will be prompted.\n" ^ 
+%endif
+%ifdef librefm.submit
+"* -l option is for optional librefm submission,
+  password request will be prompted.\n" ^
 %endif
 "* -d turns on internal logging for debugging.
 * -r randomize directory listings.
@@ -57,16 +64,19 @@ usage =
 # Initial message
 print("Starting liq123 version #{version}")
 
-lastfm = ""
-%ifdef lastfm.submit
-# Get lastfm option
-lastfm = getopt(default="none","-s")
+# Get lastfm options
+lastfm_submit = getopt(default="none","-s")
+lastfm_user = ref lastfm_submit
+lastfm_password = ref "none"
+# Get librefm options
+librefm_submit = getopt(default="none","-l")
+librefm_user = ref librefm_submit
+librefm_password = ref "none"
 # Use two even queues to prevent lastfm submission
 # from blocking file resolution
-if lastfm != "none" then
+if lastfm_submit != "none" or librefm_submit != "none" then
   set("scheduler.event_queues",2)
 end
-%endif
 
 # Get debugging option
 if getopt("-d") == "1" then
@@ -135,7 +145,7 @@ end
 uri = argv(default="",1)
 
 # Print metadatas
-def process_meta(user,password,meta)
+def process_meta(meta)
   title = '$(if $(title),"$(title)","Unknown Title")'%[("title",meta['title'])]
   print("Title: #{title}")
   artist = meta["artist"]
@@ -147,40 +157,69 @@ def process_meta(user,password,meta)
     print("Album: #{album}")
   end
 %ifdef lastfm.submit
-  if user != "" and password != "" then
+  if lastfm_submit != "none" then
     print("Submiting song to lastfm...")
-    lastfm.submit(user=lastfm,password=password,meta)
+    lastfm.submit(user=!lastfm_user,password=!lastfm_password,meta)
+  end
+%endif
+%ifdef librefm.submit
+  if librefm_submit != "none" then
+    print("Submiting song to librefm...")
+    librefm.submit(user=!librefm_user,password=!librefm_password,meta)
   end
 %endif
   print("")
 end
 
+# Fetch lastfm user/password
+def fetch_lastfm () = 
+  if (!lastfm_user) == "none" then
+    print(newline=false,"Please enter lastfm user: ")
+    lastfm_user := read()
+  end
+  if (!lastfm_password) == "none" then
+    print(newline=false,"Please enter lastfm password for #{!lastfm_user}: ")
+    lastfm_password := read(hide=true)
+  end
+end
+
+# Fetch librefm user/password
+def fetch_librefm () =
+  if (!librefm_user) == "none" then
+    print(newline=false,"Please enter librefm user: ")
+    librefm_user := read()
+  end
+  if (!librefm_password) == "none" then
+    print(newline=false,"Please enter librefm password for #{!librefm_user}: ")
+    librefm_password := read(hide=true)
+  end
+end
+
 # Main source
 def sri(uri) =
-password = ""
 %ifdef lastfm.submit
   # Test for lastfm submition
-  def password =
-    if lastfm != "none" then
-      print("Will submit songs to lastfm on account #{lastfm}")
-      print(newline=false,"Pleast enter lastfm password for #{lastfm}: ")
-      read(hide=true)
-    else
-      ""
-    end
+  if lastfm_submit != "none" then
+    print("Will submit songs to lastfm")
+    fetch_lastfm ()
+  end
+%endif
+%ifdef librefm.submit
+  # Test for librefm submition
+  if librefm_submit != "none" then
+    print("Will submit songs to librefm")
+    fetch_librefm ()
   end
 %endif
   def playlist.custom(files)
-    x = string.ref("0")
-    get = fst(x)
-    set = snd(x)
+    position = ref 0
     length = list.length(files)
     if length == 0 then
       print("Directory or playlist is empty, shutting down..")
       shutdown ()
     end
     # Trying to resolve the first file
-    first = request.create(audio=true,persistent=true,list.hd(files))
+    first = request.create(persistent=true,list.hd(files))
     if not request.resolve(first) then
       print("Could not read first file: #{request.filename(first)}")
       if force != "1" then
@@ -189,16 +228,16 @@ password = ""
       end
     end
     def next () =
-      state = int_of_string(get())
+      state = !position
       file =
         if state < length then
-          set(string_of(state + 1))
+          position := state + 1
           list.nth(files,state)
         else
           # Playlist finished
           ""
         end
-      request.create(audio=true,file)
+      request.create(file)
     end
     request.dynamic(next)
   end
@@ -229,7 +268,7 @@ password = ""
     %endif
     source = 
       if is_playlist then
-        playlist = request.create(audio=false,uri)
+        playlist = request.create(uri)
         if not request.resolve(playlist) then
           print("Could not get file from playlist")
           shutdown ()
@@ -241,7 +280,7 @@ password = ""
         sequence([single(uri),fallback([])])
       end
     source = on_metadata(
-            process_meta(lastfm,password),
+            process_meta,
             source)
     fallback([source,s],transitions=[transition,transition])
   # Test for a directory
@@ -257,23 +296,25 @@ password = ""
       end
     files = get_process_lines("find #{quote(uri)} -type f | grep '\.wav$\|\.mp3$\|\.ogg$' | sort #{sort_mode}")
     playlist = on_metadata(
-                 process_meta(lastfm,password),
+                 process_meta,
                  playlist.custom(files))
     fallback(track_sensitive=false,[playlist,s],transitions=[transition,transition])
 %ifdef input.lastfm
   # Test for lastfm:// streams
   elsif string.match(pattern="^lastfm://",uri) then
     print("Listening to lastfm stream: #{uri}")
+    fetch_lastfm ()  
     source = on_metadata(
-               process_meta(lastfm,password),
-               input.lastfm(uri))
+               process_meta,
+               input.lastfm(user=!lastfm_user,password=!lastfm_password,
+                            uri))
     mksafe(source)
 %endif
   # Now test http://
   elsif string.match(pattern="^http://",uri) then
     print("Listening to http stream: #{uri}")
     source = on_metadata(
-               process_meta(lastfm,password),
+               process_meta,
                input.http(uri))
     mksafe(source)
   else
