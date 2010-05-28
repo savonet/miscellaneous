@@ -1,0 +1,6 @@
+name="pianobar"
+version="@VERSION@"
+description="OCaml bindings for pianobar"
+requires="@requires@"
+archive(byte)="pianobar.cma"
+archive(native)="pianobar.cmxa"

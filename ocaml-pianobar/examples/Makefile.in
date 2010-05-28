@@ -1,0 +1,9 @@
+SOURCES = download.ml
+RESULT = download
+INCDIRS = ../src @ALL_INC@
+LIBS = @all_requires@  pianobar
+OCAMLFLAGS =  -g
+
+all: nc
+
+-include OCamlMakefile
