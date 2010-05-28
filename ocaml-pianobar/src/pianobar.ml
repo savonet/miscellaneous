@@ -168,7 +168,7 @@ sig
 
   val get_stations : t -> station list
 
-  val get_playlist : ?format:audio_format -> station:station -> t -> song list
+  val get_playlist : format:audio_format -> station:station -> t -> song list
 end
 
 module Piano_generic(Http : Http_t) = 
@@ -518,8 +518,8 @@ struct
 
   external get_playlist : t -> int -> station_priv -> song_priv list -> song_priv list = "caml_pianobar_get_playlist"
 
-  let get_playlist ?format ~station t = 
-    let ret = get_playlist t (int_of_audio_format format) (station_priv_of_station station) [] in
+  let get_playlist ~format ~station t = 
+    let ret = get_playlist t (int_of_audio_format (Some format)) (station_priv_of_station station) [] in
     List.map song_of_song_priv (List.rev ret)
 
 end

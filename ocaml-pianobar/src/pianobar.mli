@@ -131,7 +131,7 @@ sig
 
   val get_stations : t -> station list
 
-  val get_playlist : ?format:audio_format -> station:station -> t -> song list
+  val get_playlist : format:audio_format -> station:station -> t -> song list
 end
 
 module Piano_generic (Http : Http_t) : Piano_t
