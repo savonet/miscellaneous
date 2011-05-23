@@ -12,6 +12,9 @@ outputs = [
 %ifdef output.ao
 "ao",
 %endif
+%ifdef output.pulseaudio
+"pulseaudio",
+%endif
 %ifdef output.alsa
 "alsa",
 %endif
@@ -106,6 +109,15 @@ def output(s) = output.dummy(id="dummy",s) end
 def output(s) = 
   # Ao is default output when available
   if driver != "dummy" then
+    output.ao(id="ao",s)
+  else
+    output(s)
+  end
+end
+%endif
+%ifdef output.pulseaudio
+def output(s) =
+  if driver == "pulseaudio" then
     output.ao(id="ao",s)
   else
     output(s)

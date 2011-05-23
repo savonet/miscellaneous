@@ -10,7 +10,7 @@ VERSION="SVN"
 # Path to install directory is optional and is 
 # $INST_DIR by default.
 
-if [ "$1" = "-h" ] || [ "$1" == "--help" ]; then
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo "Usage: install.sh --install [ /path/to/install/dir ]"
   echo "Alternate usages:"
   echo "install.sh --clean [ /path/to/install/dir ]: clean previous install"

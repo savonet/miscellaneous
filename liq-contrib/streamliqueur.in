@@ -9,24 +9,31 @@ version = "@VERSION@"
 
 # Detect available outputs
 outputs = [
-%ifdef output.file.vorbis
 "vorbis",
-%endif
-%ifdef output.file.mp3
 "mp3",
-%endif
 "wav"
 ]
 
 outs = string.concat(separator=", ", outputs)
-usage = "streamliqueur [ -o /path/to/output/dir ] [ -f format ] [ -p ] [ -t timeout ] http://... " ^
+usage = "streamliqueur [ -o /path/to/output/dir ] [ -f format ] " ^ 
+%ifdef input.lastfm
+"[ -lu user ] [ -lp password ] " ^
+%endif
+"[ -p ] [ -t timeout ] http://... " ^
 %ifdef input.lastfm
 "| lastfm://... " ^
 %endif
 "]
 Where:
  * -o is mandatory
- * -f is mandatory, possible values: #{outs}
+ * -f is mandatory, possible values: #{outs}" ^ 
+%ifdef input.lastfm
+" 
+ * -lu is lastfm user
+ * -lp is lastfm password 
+" ^
+%endif 
+"
  * -p starts local playout  while ripping (default: no)
  * -t specify what timeout resets the ripping state (default: 10)
  * -h, --help: print this message."
@@ -73,6 +80,10 @@ stop =
     stop
   end
 
+# Get lastfm user/password
+lastuser = getopt(default="foo","-lu")
+lastpassword = getopt(default="bar","-lp")
+
 # Get output directory
 dest = getopt(default="false","-o")
 stop = 
@@ -93,28 +104,21 @@ uri = argv(default="",1)
 # -1: Just started
 # 0: Didn't get begining of song
 # 1: Got begining
-x = string.ref("0")
-def get_state() = 
-  x = fst(x)
-  int_of_string(x())
-end
-def set_state(v) = 
- x = snd(x)
- x(string_of(v))
-end
+state = ref 0
 
 def source(uri) = 
   # Test http://
   if string.match(pattern="^http://",uri) then
     print("Using HTTP stream: #{uri}")
     # Unreliable initial state
-    set_state("-1")
+    state := -1
     input.http(uri)
 %ifdef input.lastfm
   # Test for lastfm:// streams
   elsif string.match(pattern="^lastfm://",uri) then
     print("Using lastfm stream: #{uri}")
-    input.lastfm(uri)
+    input.lastfm(user=lastuser,password=lastpassword,
+                 uri)
 %endif
   else
     print("Unknown audio source : #{uri}")
@@ -136,49 +140,38 @@ extension =
      ".raw"
   end
 filename = '$(if $(artist),"$(artist) - ","")$(if $(title),"$(title)","Unknown Title")' ^ extension
-x = string.ref("")
-get_filename = fst(x)
-set_filename = snd(x)
+cur_file = ref ""
 
 def new_file(m)
-  oldfile = get_filename()
-  state = get_state()
+  oldfile = !cur_file
   filename = filename % m
   filename = 
     string.replace(pattern="/",fun (_) -> "-",filename)
-  state = 
+  state := 
     if filename == oldfile then
       # We can suspect a stream inconsistency
       (-1)
     else
-      state
+      !state
   end
-  if state == 1 then
+  if !state == 1 then
     print("#{oldfile} finished sucessfully !")
     old = dest ^ "/incomplete/" ^ oldfile
     new = dest ^ "/finished/" ^ oldfile
     system("mv #{quote(old)} #{quote(new)}")
   end
-  if state != (-1) then
+  if !state != (-1) then
     print("Got new file: #{filename}")
   else
     print("Got partial file: #{filename}")
   end
-  set_filename(filename)
-  if state < 1 then
-    set_state(state+1)
+  cur_file := filename
+  if !state < 1 then
+    state := !state+1
   end
 end
 
-x = string.ref(string_of(true))
-def is_failed() = 
-  get = fst(x)
-  bool_of_string(get())
-end
-def set_failed(v) =
-  set = snd(x)
-  set(string_of(v))
-end
+failed = ref true
 default = blank(id="blank")
 def transition(a,b)
   if source.id(b) == "blank" then
@@ -187,11 +180,11 @@ def transition(a,b)
       # This is clearly an issue
       # for lastfm, this cannot be sure,
       # getting next file might be too long
-      set_state(-1)
+      state := -1
     end
-    set_failed(true)
+    failed := true
   else
-    set_failed(false)
+    failed := false
     ignore(execute("dump.start"))
   end
   b
@@ -208,9 +201,9 @@ else
   source = on_metadata(new_file,source(uri))
   source = fallback(track_sensitive=false,[source,default],transitions=[transition,transition])
   def too_blank ()
-    if is_failed() then
+    if !failed then
       print("Stream timeout (#{btime} sec), stopping ripping..")
-      set_state(-1)
+      state := -1
       ignore(execute("dump.stop"))
     end
   end
@@ -224,16 +217,12 @@ else
     end
   if false then
     fail ()
-  %ifdef output.file.vorbis
   elsif format == "vorbis" then
-    output.file.vorbis(id="dump",append=true,reopen_on_metadata=true,filename,source)
-  %endif
-  %ifdef output.file.mp3
+    output.file(id="dump",%vorbis,append=true,reopen_on_metadata=true,filename,source)
   elsif format == "mp3" then
-    output.file.mp3(id="dump",append=true,reopen_on_metadata=true,filename,source)
-  %endif
+    output.file(id="dump",%mp3,append=true,reopen_on_metadata=true,filename,source)
   elsif format == "wav" then
-    output.file.wav(id="dump",append=true,reopen_on_metadata=true,filename,source)
+    output.file(id="dump",%wav,append=true,reopen_on_metadata=true,filename,source)
   else
     print("Unknown format: #{format}")
     shutdown ()
