@@ -7,7 +7,7 @@ DISTFILES := CHANGES COPYING Makefile.in README \
 	src/OCamlMakefile \
 	examples/plumber/*.ml examples/plumber/Makefile \
 	examples/plumber/OCamlMakefile  examples/simple_client/*.ml \
-	examples/simple_client/OCamlMakefile examples/Makefile \
+	examples/simple_client/OCamlMakefile \
 	examples/OCamlMakefile examples/Makefile
 VERSION = @VERSION@
 
