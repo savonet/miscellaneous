@@ -80,10 +80,6 @@ stop =
     stop
   end
 
-# Get lastfm user/password
-lastuser = getopt(default="foo","-lu")
-lastpassword = getopt(default="bar","-lp")
-
 # Get output directory
 dest = getopt(default="false","-o")
 stop = 
@@ -114,6 +110,9 @@ def source(uri) =
     state := -1
     input.http(uri)
 %ifdef input.lastfm
+  # Get lastfm user/password
+  lastuser = getopt(default="foo","-lu")
+  lastpassword = getopt(default="bar","-lp")
   # Test for lastfm:// streams
   elsif string.match(pattern="^lastfm://",uri) then
     print("Using lastfm stream: #{uri}")
@@ -172,6 +171,7 @@ def new_file(m)
 end
 
 failed = ref true
+fail = fun () -> output.dummy(fail())
 default = blank(id="blank")
 def transition(a,b)
   if source.id(b) == "blank" then

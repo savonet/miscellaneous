@@ -45,13 +45,13 @@ def shutdown() =
   shutdown()
 end
 
-usage = "Usage: simpleliq [ -h ] [ -i input ] [ -o output ] [ -e effect] [ -t transition] [ -script ] [ -local ]
+usage = "Usage: simpleliq [ -h ] [ -i input ] [ -o output ] [ -e effect] [ -t transition] [ -only-script ] [ -local ]
 * -h, --help: display this message
 * Input can be: #{ins}
 * Output can be: #{outs}
 * Effect can be: none, compress, normalize, nrj (normalize+compress)
 * Transition can be: #{trs}
-* -script outputs the corresponding script
+* -only-script only outputs the corresponding script
 * -local plays the stream on the local soundcard
 
 Optional settings:
@@ -95,7 +95,6 @@ help =
 
 # Initial script:
 script = ref ""
-script.get = !script
 script.add = fun (x) -> script := !script ^ x
 script.add(
 "#!/usr/bin/env liquidsoap
@@ -243,6 +242,7 @@ s = mksafe(s)
 
 ")
 o = ("dummy",fun (s) -> output.dummy(id="dummy",s))
+%ifdef output.icecast
 host = getopt(default="localhost","-host")
 port = int_of_string(getopt(default="8000","-port"))
 password = getopt(default="hackme","-password")
@@ -255,31 +255,31 @@ if mount == "none" and (output == "icecast.mp3" or output == "icecast.vorbis") t
   print("No mount point given for icecast output !")
   shutdown ()
 end
-%ifdef output.icecast
 o = 
   if output == "shoutcast" then
     script.add(
 "# Shoutcast output
 output.shoutcast(%mp3, host='#{host}', password='#{password}', 
-                 genre='#{genre}', url='#{url}', 
+                 genre='#{genre}', url='#{url}', port=#{port},
                  restart=#{restart}, s)
 
 ")
     (output,
     fun (s) -> output.shoutcast(%mp3,id="shoutcast",host=host,password=password,
-                         genre=genre,url=url,restart=restart,s))
+                                port=port,genre=genre,url=url,restart=restart,s))
   elsif output == "icecast.mp3" then
     script.add(
 "# MP3 icecast output
 o = output.icecast(%mp3, host='#{host}',
                    password='#{password}', genre='#{genre}',
                    url='#{url}',description='#{description}',
-                   restart=#{restart}, mount='#{mount}', s)
+                   restart=#{restart}, mount='#{mount}', port=#{port},
+                   s)
 
 ")
     (output,
     fun (s) -> output.icecast(%mp3,id="icecast-mp3",
-                       host=host,password=password,
+                       host=host,password=password,port=port,
                        genre=genre,url=url,description=description,
                        restart=restart,mount=mount,s))
   else
@@ -291,14 +291,14 @@ o =
 "# Vorbis icecast output
 o = output.icecast(%vorbis,host='#{host}', password='#{password}',
                    genre='#{genre}', url='#{url}',
-                   description='#{description}',
+                   description='#{description}', port=#{port},
                    restart=#{restart}, mount='#{mount}',
                    s)
 
 ")
    (output,
     fun (s) -> output.icecast(%vorbis,id="icecast-vorbis",
-                          host=host,password=password,
+                          host=host,password=password,port=port,
                           genre=genre,url=url,description=description,
                           restart=restart,mount=mount,s))
   else
@@ -343,29 +343,29 @@ if not help then
     print("Output:      #{fst(o)}")
     print("Effect:      #{fst(e)}")
     print("Transitions: #{fst(t)}")
-    if getopt("-script") == "1" then
-      print("Generated script:")
-      print("8<--------------------------------->8")
-      print(!script)
-      print("8<--------------------------------->8")
-      shutdown ()
-      blank()
-    else
+    print("Generated script:")
+    print("8<--------------------------------->8")
+    print(!script)
+    print("8<--------------------------------->8")
+    if getopt("-only-script") != "1" then
       print("Starting streaming...")
       set("log.stdout",true)
       e = snd(e)
       t = snd(t)
       o = snd(o)
       o(mksafe(t(e(s))))
+    else
+      shutdown ()
+      output.dummy(blank())
     end
   else
     print("Something went wrong...")
     print("Start with --help to get some help.")
     shutdown ()
-    blank ()
+    output.dummy(blank ())
   end
 else
   print(usage)
   shutdown()
-  blank()
+  output.dummy(blank())
 end

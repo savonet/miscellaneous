@@ -103,30 +103,20 @@ help =
  end
 
 # Get output option
-driver = getopt(default="ao","-o")
+driver = getopt(default="unset","-o")
+driver_is_set = ref (driver != "unset")
 def output(s) = output.dummy(id="dummy",s) end
-%ifdef output.ao
-def output(s) = 
-  # Ao is default output when available
-  if driver != "dummy" then
-    output.ao(id="ao",s)
+def test_driver(d) = 
+  if (driver == d) or (not !driver_is_set) then
+    driver_is_set := true
+    true
   else
-    output(s)
+    false
   end
 end
-%endif
-%ifdef output.pulseaudio
-def output(s) =
-  if driver == "pulseaudio" then
-    output.ao(id="ao",s)
-  else
-    output(s)
-  end
-end
-%endif
 %ifdef output.alsa
 def output(s) =
-  if driver == "alsa" then
+  if test_driver("alsa") then
     output.alsa(id="alsa",s)
   else
     output(s)
@@ -135,7 +125,7 @@ end
 %endif
 %ifdef output.oss
 def output(s) =
-  if driver == "oss" then
+  if test_driver("oss") then
     output.oss(id="oss",s)
   else
     output(s)
@@ -144,9 +134,27 @@ end
 %endif
 %ifdef output.jack
 def output(s) =
-  if driver == "jack" then
+  if test_driver("jack") then
     pid = string_of(getpid())
     output.jack(id="jack-" ^ pid,s)
+  else
+    output(s)
+  end
+end
+%endif
+%ifdef output.ao
+def output(s) = 
+  if test_driver("ao") then
+    output.ao(id="ao",s)
+  else
+    output(s)
+  end
+end
+%endif
+%ifdef output.pulseaudio
+def output(s) =
+  if test_driver("pulseaudio") then
+    output.pulseaudio(id="pulseaudio",s)
   else
     output(s)
   end
@@ -275,7 +283,7 @@ def sri(uri) =
         print("Text file treated as playlist.")
         true
       else
-        false
+        is_playlist
       end
     %endif
     source = 
@@ -341,7 +349,7 @@ if (not help) and uri != "" then
    s = output(sri(uri))
    id = source.id(s)
    print("Selected output: #{id}")
-   if not string.match(pattern=driver,id) then
+   if not string.match(pattern=driver,id) and driver != "unset" then
      print("-> Driver #{driver} might not be available.")
    end
    print("")
