@@ -1,0 +1,24 @@
+\section{Using in production}
+The full installation of liquidsoap will typically install
+\verb+/etc/liquidsoap+, \verb+/etc/init.d/liquidsoap+ and \verb+/var/log/liquidsoap+.
+All these are meant for a particular usage of liquidsoap
+when running a stable radio.
+
+Your production \verb+.liq+ files should go in \verb+/etc/liquidsoap+.
+You'll then start/stop them using the init script, \emph{e.g.}
+\verb+/etc/init.d/liquidsoap start+.
+Your scripts don't need to have the \verb+#!+ line,
+and liquidsoap will automatically be ran on daemon mode (\verb+-d+ option) for them.
+
+You should not override the \verb+log.file.path+ setting because a
+logrotate configuration is also installed so that log files
+in the standard directory are truncated and compressed if they grow too big.
+
+It is not very convenient to detect errors when using the init script.
+We advise users to check their scripts after modification (use
+\begin{verbatim}
+liquidsoap --check /etc/liquidsoap/script.liq
+\end{verbatim}
+)
+before effectively restarting the daemon.
+

@@ -1,0 +1,89 @@
+\section{Advanced techniques}
+We shall now see two things that are essential
+to using liquidsoap fully: the server which allows you
+to control a running instance of liquidsoap,
+and the usage of the \verb+init.d/liquidsoap+ service script
+for running your radios in production in a clean and convenient way.
+
+\subsection{Interaction with the server}
+Liquidsoap starts with one or several scripts as its configuration,
+and then streams forever if everything goes well.
+Once started, you can still interact with it by means of the \emph{server}.
+The server allows you to run commands. Some are general and always available,
+some belong to a specific operator. For example the \verb+request.queue()+ instances register commands to enqueue new requests, the outputs register commands
+to start or stop the outputting, display the last ten metadata chunks, etc.
+
+The protocol of the server is a simple human-readable one.
+Currently it does not have any kind of authentication and permissions.
+It is currently available via two media: TCP and Unix sockets.
+The TCP socket provides a simple telnet-like interface, available only on
+the local host by default.
+The Unix socket interface (\emph{cf.} the \verb+server.socket+ setting)
+is through some sort of virtual file.
+This is more constraining, which allows one to restrict the use of the socket
+to some priviledged users.
+
+You can find more details on how to configure the server in the
+\href{help.html#settings}{documentation} of the settings key \verb+server+,
+in particular \verb+server.telnet+ for the TCP interface and \verb+server.socket+
+for the Unix interface.
+Liquidsoap also embeds some \href{help.html#server}{documentation}
+about the available server commands.
+
+Now, we shall simply enable the Telnet interface to the server,
+by setting \verb+set("server.telnet",true)+ or simply passing the \verb+-t+ option on
+the command-line.
+In a \href{complete_case.html}{complete case analysis} we set up a \verb+request.queue()+
+instance to play user requests. It had the identifier \verb+"queue"+.
+We are now going to interact via the server to push requests into that queue:
+
+\begin{verbatim}
+dbaelde@selassie:~$ telnet localhost 1234
+Trying 127.0.0.1...
+Connected to localhost.localdomain.
+Escape character is '^]'.
+request.push /path/to/some/file.ogg
+5
+END
+metadata 5
+[...]
+END
+request.push http://remote/audio.ogg
+6
+END
+trace 6
+[...see if the download started/succeeded...]
+END
+exit
+\end{verbatim}
+Of course, the server isn't very user-friendly.
+But it is easy to write scripts to interact with Liquidsoap in that way,
+to implement a website or an IRC interface to your radio.
+However, this sort of tool is often bound to a specific usage, so we have
+not released any of ours. Feel free to
+\href{mailto:savonet-users@lists.sf.net}{ask the community} about code that you could re-use.
+
+\subsection{Using in production}
+The full installation of liquidsoap will typically install
+\verb+/etc/liquidsoap+, \verb+/etc/init.d/liquidsoap+ and \verb+/var/log/liquidsoap+.
+All these are meant for a particular usage of liquidsoap
+when running a stable radio.
+
+Your production \verb+.liq+ files should go in \verb+/etc/liquidsoap+.
+You'll then start/stop them using the init script, \emph{e.g.}
+\verb+/etc/init.d/liquidsoap start+.
+Your scripts don't need to have the \verb+#!+ line,
+and liquidsoap will automatically be ran on daemon mode (\verb+-d+ option) for them.
+
+You should not override the \verb+log.file.path+ setting because a
+logrotate configuration is also installed so that log files
+in the standard directory are truncated and compressed if they grow too big.
+
+It is not very convenient to detect errors when using the init script.
+We advise users to check their scripts after modification (use
+\begin{verbatim}
+liquidsoap --check /etc/liquidsoap/script.liq
+\end{verbatim}
+)
+before effectively restarting the daemon.
+

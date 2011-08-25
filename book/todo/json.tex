@@ -1,0 +1,92 @@
+\section{Exporting values using JSON.}
+Liquidsoap can export any language value in JSON using
+\verb+json_of+.
+
+The format is the following :
+
+\begin{itemize}
+\item \verb+() : unit+ -> \verb+null+
+\item \verb+true: bool+ -> \verb+true+
+\item \verb+"abc" : string+ -> \verb+"abc"+
+\item \verb+23 : int+ -> \verb+23+
+\item \verb+2.0 : float+ -> \verb+2.0+
+\item \verb+[2,3,4] : [int]+ -> \verb+[2,3,4]+
+\item \verb+[("f",1),("b",4)] : [(string*int)]+ -> \verb+{"f": 1, "b": 4}+
+\item \verb+("foo",123) : string*int+ -> \verb+[ "foo", 123 ]+
+\item \verb+s : source+ -> \verb+"<source>"+
+\item \verb+r : int ref+ -> \verb+{"reference": 4}+
+\item \verb+%mp3 : encoder+ -> \begin{verbatim}
+"%mp3(stereo,bitrate=128,samplerate=44100)" }
+\end{verbatim}
+
+\item \verb+r : request+ -> \verb+"<request>"+
+\item \verb+f : 'a -> 'b+ -> \verb+"<fun>"+
+
+\end{itemize}
+The two particular cases are:
+
+\begin{itemize}
+\item Products are exported as lists
+\item Lists of type \verb+string*'a+ are exported as object of the form \verb+{"key": value}+ 
+
+\end{itemize}
+Output format is pretty printed by default. A compact output can
+be obtained by using the optional argument: \verb+compact=true+.
+
+\section{Importing values using JSON.}
+If compiled with json-wheel support, Liquidsoap can also
+parse JSON data into values. using \verb+of_json+.
+
+The format is a subset of the format of exported values with the notable
+difference that only ground types (\verb+int+, \verb+floats+, \verb+string+, ...)
+are supported and not variable references, sources, formats,
+requests and functions:
+
+\begin{itemize}
+\item \verb+null+ -> \verb+() : unit+
+\item \verb+true/false+ -> \verb+true/false : bool+
+\item \verb+"abc"+ -> \verb+"abc" : string+
+\item \verb+23+ -> \verb+23 : int+
+\item \verb+2.0+ -> \verb+2.0 : float+
+\item \verb+[2,3,4]+ -> \verb+[2,3,4] : int+
+\item \verb+{"f": 1, "b": 4}+ -> \verb+[("f",1),("b",4)] : [(string*int)]+
+\item \verb+[ "foo", 123 ]+ -> \verb+("foo",123) : string*int+
+
+\end{itemize}
+The JSON standards specify that a proper JSON payload can only be an array or an
+object. However, simple integers, floats, strings and null values are
+also accepted by Liquidsoap.
+
+The function \verb+of_json+ has the following type:
+
+\begin{verbatim}
+  (default:'a,string)->'a
+\end{verbatim}
+The default parameter is very important in order to assure 
+type inference of the parsed value. Its value constrains
+the parser to only recognize JSON data of the the default value's 
+type and is returned in case parsing fails.
+
+Suppose that we want to receive a list of metadata, encoded as an object:
+
+\begin{verbatim}
+{ "title": "foo",
+ "artist": "bar" }
+\end{verbatim}
+Then, you would use of\_json with default value \verb+[("error","fail")]+ and do:
+
+\begin{verbatim}
+# Parse metadata from json
+m = of_json(default= [("error","fail")], json_string)
+\end{verbatim}
+The type of the default value constrains the parser. For instance, in the 
+above example, a JSON string \verb+"[1,2,3,4]"+ will not be accepted and the 
+function will return the values passed as default.
+
+You can use the default value in two different ways:
+
+\begin{itemize}
+\item To detect that the received json string was invalid/could not be parsed to the expected type. In the example above, if \verb+of_json+ return a metadata value of \verb+[("error","fail")]+ (the default) then you can detect in your code that parsing has failed.
+\item As a default value for the rest of the script, if you do not want to care about parsing errors.. This can be useful for instance for JSON-RPC notifications, which should not send any response to the client anyway.
+
+\end{itemize}
