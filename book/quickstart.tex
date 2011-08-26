@@ -1,0 +1,270 @@
+\chapter{Quickstart}
+\section{The Internet radio toolchain}
+\Liquidsoap is a general audio stream generator, but is mainly intended for
+Internet radios. Before starting with the proper Liquidsoap tutorial let's
+describe quickly the components of the internet radio toolchain, in case the
+reader is not familiar with it.
+
+The chain is made of
+\begin{itemize}
+\item the stream generator (Liquidsoap,
+  \href{http://www.icecast.org/ices.php}{ices}, or for example a DJ-software
+  running on your local PC) which creates an audio stream (Ogg Vorbis or MP3);
+\item the streaming media server (\href{http://www.icecast.org}{Icecast},
+  \href{http://www.shoutcast.com}{Shoutcast}, ...) which relays several streams
+  from their sources to their listeners;
+\item the media player (xmms, Winamp, ...) which gets the audio stream from the
+  streaming media server and plays it to the listener's speakers.
+\end{itemize}
+
+TODO image (Internet radio toolchain)
+
+The stream is always passed from the stream generator to the server, whether or
+not there are listeners. It is then sent by the server to every listener. The
+more listeners you have, the more bandwidth you need.
+
+If you use Icecast, you can broadcast more than one audio feed using the same
+server. Each audio feed or stream is identified by its ``mount point'' on the
+server. If you connect to the \verb+foo.ogg+ mount point, the URL of your stream
+will be \href{http://localhost:8000/foo.ogg}{http://localhost:8000/foo.ogg} --
+assuming that your Icecast is on localhost on port 8000. If you need further
+information on this you might want to read Icecast's
+\href{http://www.icecast.org}{documentation}. A proper setup of a streaming
+server is required for running savonet.
+
+Now, let's create an audio stream.
+
+\section{Starting to use Liquidsoap}
+In this tutorial we assume that you have a fully installedLiquidsoap. In
+particular the library \verb+utils.liq+ should have been installed, otherwise
+Liquidsoap won't know the operators which have been defined there. If you
+installed into the default \verb+/usr/local+ you will find it inside
+\verb+/usr/local/lib/liquidsoap/+.
+
+\subsection{Sources}
+A stream is built with Liquidsoap by using or creating sources. A source is an
+annotated audio stream. In the following picture we represent a stream which has
+at least three tracks (one of which starts before the snapshot), and a few
+metadata packets (notice that they do not necessarily coincide with new tracks).
+
+TODO image (A stream)In a Liquidsoap script, you build source
+objects. Liquidsoap provides many functions for creating sources from scratch
+(e.g. \verb+playlist+), and also for creating complex sources by putting
+together simpler ones (e.g. \verb+switch+ in the following example). Some of
+these functions (typically the \verb+output.*+) create an active source, which
+will continuously pull its children's stream and output it to speakers, to a
+file, to a streaming server, etc. These active sources are the roots of a
+Liquidsoap instance, the sources which bring life into it.
+
+\subsection{That source is fallible!}
+A couple of things can go wrong in your streaming system.  In Liquidsoap, we say
+that a source is \emph{infallible} if it will be always available.  Otherwise,
+it is \emph{fallible}, something can go wrong.  By default, an output requires
+that its input source is infallible, otherwise it complains that ``That source
+is fallible!''
+
+For example, a normal \verb+playlist+ will be fallible.  Firstly, because it
+could contain only invalid files, or at least spend too much time on invalid
+files for preparing a valid one on time.  Moreover, a playlist could contain
+remote files, which may not be accessible quickly at all times.  A queue of user
+requests is an other example of fallible source.
+
+If \verb+file.ogg+ is a valid local file, then \verb+single("file.ogg")+ will be
+an infallible source.  You can also build infallible playlists by using the
+\verb+playlist.safe+ operator, which checks all files at startup, and won't
+accept remote files -- but don't use it with too large playlists.
+
+When an output complains about its source, you have to turn it into an
+infallible one. Depending on the situation, many solutions are available. The
+function \verb+mksafe+ takes a source and returns an infallible source,
+streaming silence when the input stream becomes unavailable.  The default
+speaker output \verb+out+ actually uses \verb+mksafe+ in its definition. In a
+radio-like stream, silence is not the prefered solution, and you will probably
+prefer to \verb+fallback+ on an infallible ``security'' source:
+
+\begin{verbatim}
+fallback([your_infallible_source_here, single("failure.ogg")])
+\end{verbatim}
+Finally, if you do not care about failures, you can pass the parameter
+\verb+fallible=true+ to most outputs. In that case, the output
+will accept a fallible source, and stop whenever the source fails,
+to restart when it is ready to emit a stream again.
+This is usually done if you are not emitting a radio-like stream,
+but for example capturing or relaying another stream,
+or encoding files.
+
+\section{One-line expressions}
+Liquidsoap is a scripting language. Many simple setups can be achieved by
+evaluating one-line expressions.
+
+\subsection{Playlists}
+In the first example we'll play a playlist. Let's put a list of audio files in
+\verb+playlist.pls+: one filename per line, lines starting with a \verb+#+ are
+ignored. You can also put remote files' URLs, if your liquidsoap has
+\href{help.html#plugins}{support} for the corresponding protocols.  Then just
+run:
+
+\begin{verbatim}
+liquidsoap 'out(playlist("playlist.pls"))'
+\end{verbatim}
+Other playlist formats are supported, such as M3U and, depending on your
+configuration, XSPF. Instead of giving the filename of a playlist, you can also
+use a directory name, and liquidsoap will recursively look for audio files in
+it.
+
+Depending on your configuration, the output \verb+out+ will use AO, Alsa or OSS,
+or won't do anything if you do not have support for these libs. In that case,
+the next example is for you.
+
+\subsection{Streaming out to a server}
+Liquidsoap is capable of playing audio on your speakers, but it can also send
+audio to a streaming server such as Icecast or Shoutcast. You can choose between
+two widespread audio codecs: MP3 and Ogg Vorbis. One instance of liquidsoap can
+stream one audio feed in many formats (and even many audio feeds in many
+formats!).
+
+You may already have an Icecast server. Otherwise you can install and configure
+your own Icecast server. The configuration typically consists in setting the
+admin and source passwords, in \verb+/etc/icecast2/icecast.xml+. These passwords
+should really be changed if your server is visible from the hostile internet,
+unless you want people to kick your source as admins, or add their own source
+and steal your bandwidth.
+
+We are now going to send an audio stream, encoded as Ogg Vorbis, to an Icecast
+server:
+\begin{verbatim}
+liquidsoap
+  'output.icecast(%vorbis,
+     host = "localhost", port = 8000, \
+     password = "hackme", mount = "liq.ogg", \
+     mksafe(playlist("playlist.m3u")))'
+\end{verbatim}
+The main difference with the previous is that we used
+\verb+output.icecast.vorbis+ instead of \verb+out+. The second difference is the
+use of the \verb+mksafe+ which turns your fallible playlist source into an
+infallible source.
+
+Streaming to Shoutcast is quite similar, using the \verb+output.shoutcast+
+function:
+
+\begin{verbatim}
+liquidsoap 'output.shoutcast(%mp3, \
+                host="localhost", port = 8000, \
+	        password = "changeme", \
+	        mksafe(playlist("playlist.m3u")))'
+\end{verbatim}
+
+\subsection{Input from another streaming server}
+Liquidsoap can use another stream as an audio source. This may be useful if you
+do some live shows.
+
+\begin{verbatim}
+liquidsoap '
+  out(input.http("http://dolebrai.net:8000/dolebrai.ogg"))'
+\end{verbatim}
+\subsection{Input from the soundcard}
+If you're lucky and have a working ALSA support, try one of these... but beware
+that ALSA may not work out of the box.
+
+\begin{verbatim}
+liquidsoap 'output.alsa(input.alsa())'
+\end{verbatim}
+\begin{verbatim}
+liquidsoap 'output.alsa(bufferize = false,
+                        input.alsa(bufferize = false))'
+\end{verbatim}
+\subsection{Other examples}
+You can play with many more examples. Here are a few more. To build your own,
+lookup the \href{reference.html}{API documentation} to check what functions are
+available, and what parameters they accept.
+
+\begin{verbatim}
+# Listen to your playlist, but normalize the volume
+liquidsoap 'out(normalize(playlist("playlist_file")))'
+\end{verbatim}
+\begin{verbatim}
+# ... same, but also add smart cross-fading
+liquidsoap 'out(smart_crossfade(
+                  normalize(playlist("playlist_file"))))'
+\end{verbatim}
+\section{Script files}
+We have seen how to create a very basic stream using one-line expressions. If
+you need something a little bit more complicated, they will prove uneasy to
+manage. In order to make your code more readable, you can write it down to a
+file, named with the extension \verb+.liq+ (eg: \verb+myscript.liq+).
+
+To run the script:
+
+\begin{verbatim}
+
+liquidsoap myscript.liq
+\end{verbatim}
+On UNIX, you can also put \verb+#!/path/to/your/liquidsoap+ as the first line of
+your script (``shebang''). Don't forget to make the file executable:
+
+\begin{verbatim}
+
+chmod u+x myscript.liq
+\end{verbatim}
+Then you'll be able to run it like this:
+
+\begin{verbatim}
+
+./myscript.liq
+\end{verbatim}
+Usually, the path of the liquidsoap executable is \verb+#/usr/bin/liquidsoap+,
+and we'll use this in the following.
+
+\section{A simple radio}
+We will start with a basic radio station, that plays songs randomly chosen from
+a playlist, adds a few jingles (more or less one every four songs), and output
+an Ogg Vorbis stream to an Icecast server.
+
+Before reading the code of the corresponding liquidsoap script, it might be
+useful to visualize the streaming process with the following tree-like
+diagram. The idea is that the audio streams flows through this diagram,
+following the arrows. In this case the nodes (\verb+fallback+ and \verb+random+)
+select one of the incoming streams and relay it. The final node
+\verb+output.icecast+ is an output: it actively pulls the data out of the graph
+and sends it to the world.
+
+TODO image (Graph for 'basic-radio.liq')
+
+\begin{verbatim}
+#!/usr/bin/liquidsoap
+# Log dir
+set("log.file.path","/tmp/basic-radio.log")
+
+# Music
+myplaylist = playlist("~/radio/music.m3u")
+# Some jingles
+jingles = playlist("~/radio/jingles.m3u")
+# If something goes wrong, we'll play this
+security = single("~/radio/sounds/default.ogg")
+
+# Start building the feed with music
+radio = myplaylist
+# Now add some jingles
+radio = random(weights = [1, 4],[jingles, radio])
+# And finally the security
+radio = fallback(track_sensitive = false, [radio, security])
+
+ # Stream it out
+output.icecast(%vorbis,
+  host = "localhost", port = 8000,
+  password = "hackme", mount = "basic-radio.ogg",
+  radio)
+\end{verbatim}
+
+\subsection{What's next?}
+You can first have a look at a \href{complete_case.html}{more complex
+  example}. There is also a second tutorial about \href{advanced.html}{advanced
+  techniques}.
+
+You should definitely learn \href{help.html}{how to get help}.  If you know
+enough liquidsoap for your use, you'll only need to refer to the
+\href{reference.html}{scripting reference}, or see the
+\href{cookbook.html}{cookbook}.  At some point, you might read more about
+Liquidsoap's \href{language.html}{scripting language}.  For a better
+understanding of liquidsoap, it is also useful to read a bit about the notions
+of \href{sources.html}{sources} and \href{requests.html}{requests}.

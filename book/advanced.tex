@@ -1,0 +1,659 @@
+\chapter{Advanced topics}
+\section{Seeking in liquidsoap}
+Starting with Liquidsoap \verb+1.0.0-beta2+, it is now possible to seek within sources! 
+Not all sources support seeking though: currently, they are mostly file-based sources
+such as \verb+request.queue+, \verb+playlist+, \verb+request.dynamic+ etc..
+
+The basic function to seek within a source is \verb+source.seek+. It has the following type:
+
+\begin{verbatim}
+(source('a),float)->float
+\end{verbatim}
+The parameters are:
+
+\begin{itemize}
+\item The source to seek.
+\item The duration in seconds to seek from current position.
+
+\end{itemize}
+The function returns the duration actually seeked.
+
+Please note that seeking is done to a position relative to the \emph{current}
+position. For instance, \verb+source.seek(s,3.)+ will seek 3 seconds forward in
+source \verb+s+ and \verb+source.seek(s,(-4.))+ will seek 4 seconds backward.
+
+Since seeking is currently only supported by request-based sources, it is recommended
+to hook the function as close as possible to the original source. Here is an example
+that implements a server/telnet seek function:
+
+\begin{verbatim}
+# A playlist source
+s = playlist("/path/to/music")
+
+# The server seeking function
+def seek(t) =
+  t = float_of_string(default=0.,t)
+  log("Seeking #{t} sec")
+  ret = source.seek(s,t)
+  "Seeked #{ret} seconds."
+end
+
+# Register the function
+server.register(namespace=source.id(s),
+                description="Seek to a relative position \
+                             in source #{source.id(s)}",
+                usage="seek <duration>",
+                "seek",seek)
+\end{verbatim}
+\section{Cue points.}
+Sources that support seeking can also be used to implement cue points.
+The basic operator for this is \verb+cue_cut+. Its has type:
+
+\begin{verbatim}
+(?id:string,?cue_in_metadata:string,
+ ?cue_out_metadata:string,
+ source(audio='#a,video='#b,midi='#c))->
+    source(audio='#a,video='#b,midi='#c)
+\end{verbatim}
+Its parameters are:
+
+\begin{itemize}
+\item \verb+cue_in_metadata+: Metadata for cue in points, default: \verb+"liq_cue_in"+.
+\item \verb+cue_out_metadata+: Metadata for cue out points, default: \verb+"liq_cue_out"+.
+\item The source to apply cue points to.
+
+\end{itemize}
+The values of cue-in and cue-out points are given in absolute
+position through the source's metadata. For instance, the following
+source will cue-in at 10 seconds and cue-out at 45 seconds on all its tracks:
+
+\begin{verbatim}
+s = playlist(prefix="annotate:liq_cue_in=\"10.\",liq_cue_out=\"45\":",
+             "/path/to/music")
+
+s = cue_cut(s)
+\end{verbatim}
+As in the above example, you may use the \verb+annotate+ protocol to pass custom cue
+points along with the files passed to Liquidsoap. This is particularly useful 
+in combination with \verb+request.dymanic+ as an external script can build-up
+the appropriate URI, including cue-points, based on information from your
+own scheduling back-end.
+
+Alternatively, you may use \verb+map_metadata+ to add those metadata. The operator
+\verb+map_metadata+ supports seeking and passes it to its underlying source.
+
+
+\section{External decoders}
+You can use external programs in liquidsoap to decode audio files. The program must be able to
+output WAV data to its standard output (\verb+stdout+) and, posssibly, read encoded data from its 
+standard input.
+
+Please note that this feature is not available under Windows.
+
+\subsection{Basic operators}
+External decoders are registered using the \verb+add_decoder+ and \verb+add_oblivious_decoder+ operators. 
+They are invoked the following way: 
+
+\subsubsection{add\_decoder}
+\begin{verbatim}
+add_decoder(name="my_decoder",description="My custom decoder",
+            test,decoder)@, where:
+\end{verbatim}
+\verb+add_decoder+ is used for external decoders that can read the encoded data from their standard
+input (stdin) and write the decoded data as WAV to their standard output (stdout). This operator
+is recommended because its estimation of the remaining time is better than the estimation done
+by the decoders registered using \verb+add_oblivious_decoder+. The important parameters are:
+
+\begin{itemize}
+\item \verb+test+ is a function used to determine if the file should be decoded by the decoder. Returned values are: \begin{itemize}
+\item \verb+0+: no decodable audio, 
+\item \verb+-1+: decodable audio but number of audio channels unknown, 
+\item \verb+x+: fixed number of decodable audio channels.
+
+\end{itemize}
+
+\item \verb+decoder+ is the string containing the shell command to run to execute the decoding process.
+
+\end{itemize}
+
+\subsubsection{add\_oblivious\_decoder}
+\verb+add_oblivious_decoder+ is very similar to \verb+add_decoder+. The main difference is that the
+decoding program reads encoded data directly from the local files and not its standard input.
+Decoders registered using this operator do not have a reliable estimation of the remaining
+time. You should use \verb+add_oblivious_decoder+ only if your decoding program is not able
+to read the encoded data from its standard input.
+
+\begin{verbatim}
+add_oblivious_decoder(name="my_decoder",description="My custom decoder",
+                      buffer=5., test,decoder)@, where:
+\end{verbatim}
+\verb+add_decoder+ is used for external decoders that can read the encoded data from their standard
+input (stdin) and write the decoded data as WAV to their standard output (stdout). This operator
+is recommended because its estimation of the remaining time is better than the estimation done
+by the decoders registered using \verb+add_oblivious_decoder+. The important parameters are:
+
+\begin{itemize}
+\item \verb+test+ is a function used to determine if the file should be decoded by the decoder. Returned values are: \begin{itemize}
+\item \verb+0+: no decodable audio,
+\item \verb+-1+: decodable audio but number of audio channels unknown,
+\item \verb+x+: fixed number of decodable audio channels.
+
+\end{itemize}
+
+\item \verb+decoder+ is a function that receives the name of the file that should be decoded and returns a string containing the shell command to run to execute the decoding process.
+
+\end{itemize}
+\subsubsection{add\_metadata\_resolver}
+You may also register new metadata resolvers using the \verb+add_metadata_resolver+ operator. It is invoked the
+following way: \verb+add_metadata_resolver(format,resolver)+, where:
+
+\begin{itemize}
+\item \verb+format+ is the name of the resolved format. It is only informative.
+\item \verb+resolver+ is a function \verb+f+ that returns a list of metadata of
+  the form: \verb+(label, value)+. It is invoked the following way:
+  \verb+f(format=name,file)+, where:\begin{itemize}
+  \item \verb+format+ contains the name of the format, as returned by the
+    decoder that accepted to decode the file. \verb+f+ may return immediately if
+    this is not an expected value.
+  \item \verb+file+ is the name of the file to decode.
+\end{itemize}
+\end{itemize}
+
+\subsection{Wrappers}
+On top of the basic operators, wrappers have been written for some common
+decoders. This includes the \verb+flac+ and \verb+faad+ decoders, by
+default. All the operators are defined in \verb+externals.liq+.
+
+\subsection{The FLAC decoder}
+The flac decoder uses the \verb+flac+ command line. It is enabled if the binary
+can be found in the current \verb+$PATH+.
+
+Its code is the following:
+% \begin{verbatim}
+  % def test_flac(file) =
+    % if test_process("which metaflac") then
+      % channels = list.hd(get_process_lines("metaflac \
+                                            % --show-channels #{quote(file)} \
+                                            % 2>/dev/null"))
+      % # If the value is not an int, this returns 0 and we are ok :)
+      % int_of_string(channels)
+    % else
+      % # Try to detect using mime test..
+      % mime = get_mime(file)
+      % if string.match(pattern="flac",file) then
+        % # We do not know the number of audio channels
+        % # so setting to -1
+        % (-1)
+      % else
+        % # All tests failed: no audio decodable using flac..
+        % 0
+      % end
+    % end
+  % end
+  % add_decoder(name="FLAC",description="Decode files using the flac \
+              % decoder binary.", test=test_flac,flac_p)
+% \end{verbatim}
+Additionaly, a metadata resolver is registered when the \verb+metaflac+ command
+can be found in the \verb+$PATH+:
+
+\begin{verbatim}
+if test_process("which metaflac") then
+  log(level=3,"Found metaflac binary: \
+               enabling flac external metadata resolver.")
+  def flac_meta(file)
+    ret = get_process_lines("metaflac --export-tags-to=- \
+                            #{quote(file)} 2>/dev/null")
+    ret = list.map(string.split(separator="="),ret)
+    # Could be made better..
+    def f(l',l)=
+      if list.length(l) >= 2 then
+        list.append([(list.hd(l),list.nth(l,1))],l')
+      else
+        if list.length(l) >= 1 then
+          list.append([(list.hd(l),"")],l')
+        else
+          l'
+        end
+      end
+    end
+  list.fold(f,[],ret)
+  end
+  add_metadata_resolver("FLAC",flac_meta)
+end
+\end{verbatim}
+
+\subsubsection{The faad decoder}
+The faad decoder uses the \verb+faad+ program, if found in the \verb+$PATH+.  It
+can decode AAC and AAC+ audio files. This program does not support reading
+encoded data from its standard input so the decoder is registered using
+\verb+add_oblivious_decoder+.
+
+Its code is the following:
+
+% \begin{verbatim}
+  % aac_mimes = ["audio/aac", "audio/aacp", "audio/3gpp", "audio/3gpp2", "audio/mp4",
+               % "audio/MP4A-LATM", "audio/mpeg4-generic", "audio/x-hx-aac-adts"]
+  % aac_filexts = ["m4a", "m4b", "m4p", "m4v",
+                 % "m4r", "3gp", "mp4", "aac"]
+
+  % # Faad is not very selective so
+  % # We are checking only file that
+  % # end with a known extension or mime type
+  % def faad_test(file) =
+    % # Get the file's mime
+    % mime = get_mime(file)
+    % # Test mime
+    % if list.mem(mime,aac_mimes) then
+      % true
+    % else
+      % # Otherwise test file extension
+      % ret = string.extract(pattern='\.(.+)$',file)
+        % if list.length(ret) != 0 then
+          % ext = ret["1"]
+          % list.mem(ext,aac_filexts)
+        % else
+          % false
+        % end
+    % end
+  % end
+
+  % if test_process("which faad") then
+    % log(level=3,"Found faad binary: enabling external faad decoder and \
+                 % metadata resolver.")
+    % faad_p = (fun (f) -> "faad -w #{quote(f)} 2>/dev/null")
+    % def test_faad(file) =
+      % if faad_test(file) then
+        % channels = list.hd(get_process_lines("faad -i #{quote(file)} 2>&1 | \
+                                              % grep 'ch,'"))
+        % ret = string.extract(pattern=", (\d) ch,",channels)
+        % ret =
+          % if list.length(ret) == 0 then
+          % # If we pass the faad_test, chances are
+          % # high that the file will contain aac audio data..
+            % "-1"
+          % else
+            % ret["1"]
+          % end
+        % int_of_string(default=(-1),ret)
+      % else
+        % 0
+      % end
+    % end
+    % add_oblivious_decoder(name="FAAD",description="Decode files using \
+                          % the faad binary.", test=test_faad, faad_p)
+    % def faad_meta(file) =
+      % if faad_test(file) then
+        % ret = get_process_lines("faad -i \
+                     % #{quote(file)} 2>&1")
+        % # Yea, this is tuff programming (again) !
+        % def get_meta(l,s)=
+          % ret = string.extract(pattern="^(\w+):\s(.+)$",s)
+          % if list.length(ret) > 0 then
+            % list.append([(ret["1"],ret["2"])],l)
+          % else
+            % l
+          % end
+        % end
+        % list.fold(get_meta,[],ret)
+      % else
+        % []
+      % end
+    % end
+    % add_metadata_resolver("FAAD",faad_meta)
+  % end
+% \end{verbatim}
+
+\subsection{External encoders}
+You can use any external program that accepts wav or raw PCM data to encode
+audio data and use the resulting compressed stream as an output, either to a
+file, a pipe, or even icecast.
+
+When using an external encoding process, uncompressed PCM data will be sent to
+the process through its standard input (\verb+stdin+), and encoded data will be
+read through its standard output (\verb+stdout+). When using a process that does
+only file input or output, \verb+/dev/stdin+ and \verb+/dev/stdout+ can be used,
+though this may generate issues if the encoding process expects to be able to go
+backward/forward in the file.
+
+The main operators that can be used with external encoders are:
+\begin{itemize}
+\item \verb+output.file+
+\item \verb+output.icecast+
+\end{itemize}
+In order to use external encoders with these operators, you have to use the
+\verb+%external+ \href{encoding_formats.html}{encoding format}.
+Its syntax is:
+
+\begin{verbatim}
+%external(channels=2,samplerate=44100,header=true,
+          restart_on_crash=false,
+          restart_on_new_track,
+          restart_after_delay=<int>,
+          process="")
+\end{verbatim}
+The available options are:
+
+\begin{itemize}
+\item \verb+process+: this parameter is a function that takes the current metadata and return the process to start.
+\item \verb+header+: if set to \verb+false+ then no WAV header will be added to the data fed to the encoding process, thus the encoding process shall operate on RAW data.
+\item \verb+restart_on_crash+: wether to restart the encoding process if it crashed. Useful when the external process fails to encode properly data after some time.
+\item \verb+restart_on_new_track+: restart encoding process on each new track. Useful in conjonction with the \verb+process+ parameter for audio formats that need a new header, possibly with metadatas, for each new track. This is the case for the ogg container.
+\item \verb+restart_encoder_delay+: Restart the encoder after some delay. This can be useful for encoders that cannot operate on infinite streams, or are buggy after some time, like the \verb+lame+ binary. The default for \verb+lame+ and \verb+accplusenc+-based encoders is to restart the encoder every hour.
+
+\end{itemize}
+Only one of \verb+restart_encoder_delay+ or \verb+restart_on_new_track+ should be used.
+
+The restart mechanism strongly relies on the good behaviour of the encoding process. The restart operation will 
+close the standard input of the encoding process. The encoding process is then expected to finish its own operations and
+close its standard output. If it does not close its standard output, the encoding task will not finish. 
+
+If your encoding process has this issue, you should turn the \verb+restart_on_crash+ option to \verb+true+ and kill the encoding
+process yourself.
+
+If you use an external encoder with the \verb+output.icecast+ operator,
+you should also use the following options of \verb+output.icecast+:
+
+\begin{itemize}
+\item \verb+icy_metadata+: send new metadata as ICY update. This is the case for headerless formats, such as MP3 or AAC, and it appears to work also for ogg/vorbis streams.
+\item \verb+format+: Content-type (mime) of the data sent to icecast. For instance, for ogg data, it is one of ``application/ogg'', ``audio/ogg'' or ``video/ogg'' and for mp3 data it is ``audio/mpeg''.
+
+\end{itemize}
+
+\section{Clocks}
+In the \href{quick_start.html}{quickstart} and in the introduction to liquidsoap
+\href{sources.html}{sources}, we have described a simple world in which sources
+communicate with each other, creating and transforming data that
+composes multimedia streams.
+In this simple view, all sources produce data at the same rate,
+animated by a single clock: at every cycle of the clock,
+a fixed amount of data is produced.
+
+While this simple picture is useful to get a fair idea of what's going on
+in liquidsoap, the full picture is more complex: in fact, a streaming
+system might involve \emph{multiple clocks}, or in other words several
+time flows.
+
+It is only in very particular cases that liquidsoap scripts
+need to mention clocks explicitly. Otherwise, you won't even notice
+how many clocks are involved in your setup: indeed, liquidsoap can figure
+out the clocks by itself, much like it infers types.
+Nevertheless, there will sometimes be cases where your script cannot
+be assigned clocks in a correct way, in which case liquidsoap will
+complain. For that reason, every user should eventually get a minimum
+understanding of clocks.
+
+In the following, we first describe why we need clocks.
+Then we go through the possible errors that any user might encounter
+regarding clocks.
+Finally, we describe how to explicitly use clocks,
+and show a few striking examples of what can be achieved that way.
+
+\subsection{Why multiple clocks}
+The first reason is \textbf{external} to liquidsoap: there is simply
+not a unique notion of time in the real world.
+Your computer has an internal clock which indicates
+a slightly different time than your watch or another computer's clock.
+Moreover, when communicating with a remote computer, network
+latency causes extra time distortions.
+Even within a single computer there are several clocks: notably, each
+soundcard has its own clock, which will tick at a slightly different
+rate than the main clock of the computer.
+Since liquidsoap communicates with soundcards and remote computers,
+it has to take those mismatches into account.
+
+There are also some reasons that are purely \textbf{internal} to liquidsoap:
+in order to produce a stream at a given speed,
+a source might need to obtain data from another source at
+a different rate. This is obvious for an operator that speeds up or
+slows down audio (\verb+stretch+). But it also holds more subtly
+for \verb+cross+, \verb+smart_cross+ as well as the
+derived operators: during the lapse of time where the operator combines
+data from an end of track with the beginning of the other other,
+the crossing operator needs twice as much stream data. After ten tracks,
+with a crossing duration of six seconds, one more minute will have
+passed for the source compared to the time of the crossing operator.
+
+In order to avoid inconsistencies caused by time differences,
+while maintaining a simple and efficient execution model for
+its sources, liquidsoap works under the restriction that
+one source belongs to a unique clock,
+fixed once for all when the source is created.
+
+The graph representation of streaming systems can be adapted
+into a good representation of what clocks mean.
+One simply needs to add boxes representing clocks:
+a source can belong to only one box,
+and all sources of a box produce streams at the same rate.
+For example, 
+\begin{verbatim}
+output.icecast(fallback([crossfade(playlist(...)),jingles]))
+\end{verbatim}
+
+yields the following graph:
+
+TODO image (Graph representation with clocks)Here, clock\_2 was created specifically for the crossfading
+operator; the rate of that clock is controlled by that operator,
+which can hence accelerate it around track changes without any
+risk of inconsistency.
+The other clock is simply a wallclock, so that the main stream
+is produced following the ``real'' time rate.
+
+\subsection{Error messages}
+Most of the time you won't have to do anything special about clocks:
+operators that have special requirements regarding clocks will do
+what's necessary themselves, and liquidsoap will check that everything is 
+fine. But if the check fails, you'll need to understand the error,
+which is what this section is for.
+
+\subsubsection{Disjoint clocks}
+On the following example, liquidsoap will issue the fatal error
+\verb+a source cannot belong to two clocks+:
+
+\begin{verbatim}
+
+s = playlist("~/media/audio")
+output.alsa(s) # perhaps for monitoring
+output.icecast(mount="radio.ogg",%vorbis,crossfade(s))
+\end{verbatim}
+Here, the source \verb+s+ is first assigned the ALSA clock,
+because it is tied to an ALSA output.
+Then, we attempt to build a \verb+crossfade+ over \verb+s+.
+But this operator requires its source to belong to a dedicated
+internal clock (because crossfading requires control over the flow
+of the of the source, to accelerate it around track changes).
+The error expresses this conflict:
+\verb+s+ must belong at the same time to the ALSA clock
+and \verb+crossfade+'s clock.
+
+\subsubsection{Nested clocks}
+On the following example, liquidsoap will issue the fatal error
+\verb+cannot unify two nested clocks+:
+
+\begin{verbatim}
+
+jingles = playlist("jingles.lst")
+music = rotate([1,10],[jingles,playlist("remote.lst")])
+safe = rotate([1,10],[jingles,single("local.ogg")])
+q = fallback([crossfade(music),safe])
+\end{verbatim}
+Let's see what happened.
+The \verb+rotate+ operator, like most operators, operates
+within a single clock, which means that \verb+jingles+
+and our two \verb+playlist+ instances must belong to the same clock.
+Similarly, \verb+music+ and \verb+safe+ must belong to that
+same clock.
+When we applied crossfading to \verb+music+,
+the \verb+crossfade+ operator created its own internal clock,
+call it \verb+cross_clock+,
+to signify that it needs the ability to accelerate at will the
+streaming of \verb+music+.
+So, \verb+music+ is attached to \verb+cross_clock+,
+and all sources built above come along.
+Finally, we build the fallback, which requires that all of its
+sources belong to the same clock.
+In other words, \verb+crossfade(music)+ must belong
+to \verb+cross_clock+ just like \verb+safe+.
+The error message simply says that this is forbidden: the internal
+clock of our crossfade cannot be its external clock -- otherwise
+it would not have exclusive control over its internal flow of time.
+
+The same error also occurs on \verb+add([crossfade(s),s])+,
+the simplest example of conflicting time flows, described above.
+However, you won't find yourself writing this obviously problematic
+piece of code. On the other hand, one would sometimes like to
+write things like our first example.
+
+The key to the error with our first example is that the same
+\verb+jingles+ source is used in combination with \verb+music+
+and \verb+safe+. As a result, liquidsoap sees a potentially
+nasty situation, which indeed could be turned into a real mess
+by adding just a little more complexity. To obtain the desired effect
+without requiring illegal clock assignments, it suffices to
+create two jingle sources, one for each clock:
+
+\begin{verbatim}
+
+music = rotate([1,10],[playlist("jingles.lst"),
+                       playlist("remote.lst")])
+safe  = rotate([1,10],[playlist("jingles.lst"),
+                       single("local.ogg")])
+q = fallback([crossfade(music),safe])
+\end{verbatim}
+There is no problem anymore: \verb+music+ belongs to 
+\verb+crossfade+'s internal clock, and \verb+crossfade(music)+,
+\verb+safe+ and the \verb+fallback+ belong to another clock.
+
+\subsection{The clock API}
+There are only a couple of operations dealing explicitly with clocks.
+
+The function \verb+clock.assign_new(l)+ creates a new clock
+and assigns it to all sources from the list \verb+l+.
+For convenience, we also provide a wrapper, \verb+clock(s)+
+which does the same with a single source instead of a list,
+and returns that source.
+With both functions, the new clock will follow (the computer's idea of)
+real time, unless \verb+sync=false+ is passed, in which case
+it will run as fast as possible.
+
+The old (pre-1.0.0) setting \verb+root.sync+ is superseded
+by \verb+clock.assign_new()+.
+If you want to run an output as fast as your CPU allows,
+just attach it to a new clock without synchronization:
+
+\begin{verbatim}
+clock.assign_new(sync=false,[output.file(%vorbis,"audio.ogg",source)])
+\end{verbatim}
+This will automatically attach the appropriate sources to that clock.
+However, you may need to do it for other operators if they are totally
+unrelated to the first one.
+
+The \verb+buffer()+ operator can be used to communicate between
+any two clocks: it takes a source in one clock and builds a source
+in another. The trick is that it uses a buffer: if one clock
+happens to run too fast or too slow, the buffer may empty or overflow.
+
+Finally, \verb+get_clock_status+ provides information on
+existing clocks and track their respective times:
+it returns a list containing for each clock a pair
+\verb+(name,time)+ indicating
+the clock id its current time in \emph{clock cycles} --
+a cycle corresponds to the duration of a frame,
+which is given in ticks, displayed on startup in the logs.
+The helper function \verb+log_clocks+ built
+around \verb+get_clock_status+ can be used to directly
+obtain a simple log file, suitable for graphing with gnuplot.
+Those functions are useful to debug latency issues.
+
+\subsection{External clocks: decoupling latencies}
+The first reason to explicitly assign clocks is to precisely handle
+the various latencies that might occur in your setup.
+
+Most input/output operators (ALSA, AO, Jack, OSS, etc)
+require their own clocks. Indeed, their processing rate is constrained
+by external sound APIs or by the hardware itself.
+Sometimes, it is too much of an inconvenience,
+in which case one can set \verb+clock_safe=false+ to allow
+another clock assignment --
+use at your own risk, as this might create bad latency interferences.
+
+Currently, \verb+output.icecast+ does not require to belong
+to any particular clock. This allows to stream according to the
+soundcard's internal clock, like in most other tools:
+in \begin{verbatim}
+output.icecast(%vorbis,mount="live.ogg",input.alsa())
+\end{verbatim}
+,
+the ALSA clock will drive the streaming of the soundcard input via
+icecast.
+
+Sometimes, the external factors tied to Icecast output cannot be
+disregarded: the network may lag. If you stream a soundcard input
+to Icecast and the network lags, there will be a glitch in the
+soundcard input -- a long enough lag will cause a disconnection,
+in which case there won't be anybody to notice the huge glitch.
+This might be undesirable, and is certainly disappointing if you
+are recording a backup of your precious soundcard input using
+\verb+output.file+: by default it will suffer the same
+latencies and glitches, while in theory it could be perfect.
+To fix this you can explicitly separate Icecast (high latency,
+low quality acceptable) from the backup and soundcard input (low latency,
+high quality wanted):
+
+\begin{verbatim}
+
+input = input.oss()
+
+clock.assign_new(id="icecast",
+  [output.icecast(%mp3,mount="blah",restart=true,
+     mksafe(buffer(input)))])
+
+output.file(
+  %mp3,"record-%Y-%m-%d-%H-%M-%S.mp3",
+  input)
+\end{verbatim}
+Here, the soundcard input and file output end up in the OSS
+clock. The icecast output
+goes to the explicitly created \verb+"icecast"+ clock,
+and a buffer is used to
+connect it to the soundcard input. Small network lags will be
+absorbed by the buffer. Important lags and possible disconnections
+will result in an overflow of the buffer.
+In any case, the OSS input and file output won't be affected
+by those latencies, and the recording should be perfect.
+The Icecast quality is also better with that setup,
+since small lags are absorbed by the buffer and do not create
+a glitch in the OSS capture, so that Icecast listeners won't
+notice the lag at all.
+
+Note that explicitly assigning a new clock for the Icecast
+output was unnecessary: liquidsoap would have chosen the default
+wallclock otherwise. However, it is better practice to force
+it manually, to make to obtain the wanted clock assignment.
+It is especially important since you might change your script
+later, and you want to avoid an unnoticed change of the
+clock assignment.
+
+\subsection{Internal clocks: exploiting multiple cores}
+Clocks can also be useful even when external factors are not an issue.
+Indeed, several clocks run in several threads, which creates an opportunity
+to exploit multiple CPU cores.
+The story is a bit complex because OCaml has some limitations on
+exploiting multiple cores, but in many situations most of the computing
+is done in C code (typically decoding and encoding) so it parallelizes
+quite well.
+
+Typically, if you run several outputs that do not share much (any) code,
+you can put each of them in a separate clock.
+For example the following script takes one file and encodes it as MP3
+twice. You should run it as \verb+liquidsoap EXPR -- FILE+
+and observe that it fully exploits two cores:
+
+\begin{verbatim}
+
+def one()
+  clock.assign_new(sync=false,
+        [output.file(%mp3,"/dev/null",single(argv(1)))])
+end
+one()
+one()
+\end{verbatim}

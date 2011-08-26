@@ -1,0 +1,205 @@
+\chapter{Signal processing}
+\section{Normalization and replay gain}
+\subsection{Normalization}
+If you want to have a constant average volume on an audio stream, you can use
+the \verb+normalize+ operator. However, this operator cannot guess the volume of
+the whole stream, and can be ``surprised'' by rapide changes of the volume. This
+can lead to a volume that is too low, too high, oscillates. In some cases,
+dynamic normalization also creates saturation.
+
+To tweak the normalization, several parameters are available. These are listed
+and explained in the \href{reference.html}{reference} and also visible by
+executing \verb+liquidsoap -h normalize+. However, if the stream you want to
+normalize consist of audio files, using the replay gain technology might be a
+better choice.
+
+\subsection{Replay gain}
+\href{http://www.replaygain.org}{Replay gain} is a proposed standard that is
+(more or less) respected by many open-source tools. It provides a way to obtain
+an overall uniform perceived loudness over a track or a set of tracks. The
+computation of the loudness is based on how the human ear actually perceives
+each range of frequency. Having computed the average perceived loudness on a
+track or an album, it is easy to renormalize the tracks when playing, ensuring a
+comfortable, consistent listening experience.
+
+Because it is track-based, replay gain does not suffer from the typical problems
+of stream-based, dynamic approaches. Namely, these distort the initial audio,
+since they constantly adapt the amplification factor. Sometimes it oscillates
+too quickly in a weird audible way. Sometimes it does not adapt quickly enough,
+leading to under or over-amplified sections.
+
+On the other hand, replay gain has its drawbacks. First, it requires an initial
+computation that is a bit costly. This computation can be done once for all for
+local files -- subsequent calls can then retrieve the result from the
+metadata. Although not impossible in theory, there is no recipe for Liquidsoap
+to offer the same feature on remote files.
+
+\subsubsection{How to use replay gain in Liquidsoap}
+In theory, there are two independant parts: computing the replay gain and
+tagging the files with that information, and retrieving the gain from the
+metadata when playing the file, in order to renormalize it. In practice,
+everybody will want to use the same script that triggers the computation if
+needed even if they do not need that part, because the replay gain metadata is
+stored in some exotic format that liquidsoap does not support directly
+yet. Instead, it relies on the replay gain computation tools to extract them.
+
+\subsubsection{Renormalizing according to some metadata field}
+The \verb+amplify()+ operator can behave according to metadata. Its
+\verb+override+ parameter indicates a metadata field that, when present and
+well-formed, overrides the amplification factor. Well formed fields are floats
+(e.g. \verb+2+ or \verb+0.7+) for linear amplification factors and floats
+postfixed with \verb+dB+ (\eg \verb+-2 dB+) for logarithmic ones.
+
+For replay gain implementation, the \verb+amplify+ operator would typically be
+added immediately on top of the basic tracks source, before transitions or other
+audio processing operators. We follow these lines in the next example, where the
+\verb+replay_gain+ field is used to carry the information:
+\begin{verbatim}
+list    = playlist("~/playlist")
+default = single("~/default.ogg")
+
+s = fallback([list,default])
+s = amplify(1.,override="replay_gain",s)
+
+# Here: other effects, and finally the output...
+\end{verbatim}
+You may also take care of not losing the information brought by the
+metadata. This may be the case for instance if you use \verb+smart_crossfade+
+before applying normalization. Hence, normalization should be done as soon as
+possible in the script, if possible just after the initial source.
+
+\subsubsection{Computing and retrieving the data}
+In practice, the replay gain information can be found in various fields
+depending on the audio format and the replay gain computation tool.
+
+Liquidsoap provides a script for extracting the replay gain value from
+\verb+mp3+, \verb+ogg/vorbis+ and \verb+flac+ files. It requires the tools
+\verb+mp3gain+ (resp. \verb+vorbisgain+ and \verb+ogginfo+,
+resp. \verb+metaflac+) for \verb+mp3+ (resp. \verb+ogg/vorbis+,
+resp. \verb+flac+) files processing, and will affect your files: after the first
+computation of the replay gain, that information will be stored in the metadata.
+
+Optionally, this script can also use the \verb+file+ binary in order to detect
+the content of an audio file not only using its extension, which is necessary
+with, for instance, protocols that download files across the network, such as
+\verb+ftp+.
+
+Then, there are at least two ways to use it in your liquidsoap script: using the
+replay gain metadata resolver, or the \verb+replay_gain+ protocol.
+
+The metadata solution is uniform: without changing anything, \emph{all} your
+files will have a new \verb+replay_gain+ metadata when the computation
+suceeded. However, this can be problematic, for example, for jingles, or if you
+have large files that would take a very long time to be analyzed by replaygain
+tools.  The protocol solution gives you more control on when the replaygain
+analysis is performed, but requires that you change some \verb+uri+ into
+\verb+replay_gain:uri+.  We briefly discuss below how to do it conveniently in
+some typical cases.
+
+Note that our replaygain support for remote files can be problematic.  As such,
+it would analyze the file after each download, which may be uselessly
+costly. One should instead make sure that the file has been analyzed on the
+remote machine, so that the local analysis only retrieves the precomputed
+value. In any case, remote files can only be treated through the addition of a
+metadata resolver, and cannot work with the \verb+replay_gain+ protocol
+technique (\verb+replaygain:ftp://host/file.ogg+ will call the script using the
+\verb+ftp://host/file.ogg+ as the URI parameter, and it will fail).
+
+The replay gain metadata resolver is not enabled by default. You can do it by
+adding the following code in your script:
+\begin{verbatim}
+enable_replaygain_metadata ()
+\end{verbatim}
+The \verb+replay_gain+ protocol is enabled by default.  In this case, everytime
+you need replaygain information about a file, access it through your new
+protocol: for example, replace \verb+/path/to/file.mp3+ by
+\verb+replay_gain:/path/to/file.mp3+.  The resolving of the protocol will
+trigger a call to our script, which will return an annotated request, finally
+resulting in your file with the extra \verb+replay_gain+ metadata.
+
+Prepending \verb+replay_gain:+ is easy if you are using a script behind some
+\verb+request.dynamic+ operator. If you are using the \verb+playlist+ operator,
+you can use its \verb+prefix+ parameter.
+
+
+\section{LADSPA plugins in Liquidsoap}
+\href{http://www.ladspa.org/}{LADSPA} is a standard that allows software audio
+processors and effects to be plugged into a wide range of audio synthesis and
+recording packages.
+
+If enabled, Liquidsoap supports LADSPA plugins. In this case, installed plugins
+are detected at run-time and are all available in Liquidsoap under a name of the
+form: \verb+ladspa.plugin+, for instance \verb+ladspa.karaoke+,
+\verb+ladspa.flanger+ etc..
+
+The full list of those operators can be found using
+\verb+liquidsoap --list-plugins+.  Also, as usual,
+\verb+liquidsoap -h ladspa.plugin+ returns a detailed description of each
+LADSPA's operators.  For instance:
+
+\begin{verbatim}
+./liquidsoap -h ladspa.flanger
+*** One entry in scripting values:
+Flanger by Steve Harris <steve@plugin.org.uk>.
+Category: Source / Sound Processing
+Type: (?id:string,?delay_base:'a,?feedback:'b,
+ ?lfo_frequency:'c,?max_slowdown:'d,
+ source(audio='#e,video='#f,midi='#g))->
+source(audio='#e,video='#f,midi='#g)
+where 'a, 'b, 'c, 'd is either float or ()->float
+Flag: hidden
+Parameters:
+* id : string (default "")
+    Force the value of the source ID.
+* delay_base : anything that is either float or ()->float (default 6.32499980927)
+    Delay base (ms) (0.1 <= delay_base <= 25).
+* feedback : anything that is either float or ()->float (default 0.)
+    Feedback (-1 <= feedback <= 1).
+* lfo_frequency : anything that is either float or ()->float (default 0.334370166063)
+    LFO frequency (Hz) (0.05 <= lfo_frequency <= 100).
+* max_slowdown : anything that is either float or ()->float (default 2.5)
+    Max slowdown (ms) (0 <= max_slowdown <= 10).
+* (unlabeled) : source(audio='#e,video='#f,midi='#g) (default None)
+\end{verbatim}
+For advanced users, it is worth nothing that most of the parameters associated
+with LADSPA operators can take a function, for instance in the above:
+\begin{verbatim}
+max_slowdown : anything that is either float or ()->float
+\end{verbatim}
+This means that those parameters may be dynamically changed while running a
+liquidsoap script.
+
+\section{Blank detection}
+\href{index.html}{Liquidsoap} has three operators for dealing with blanks.
+
+On GeekRadio, we play many files, some of which include bonus tracks, which means that they end with a very long blank and then a little extra music. It's annoying to get that on air. The \verb+skip_blank+ operator skips the current track when a too long blank is detected, which avoids that. The typical usage is simple:
+
+\begin{verbatim}
+# Wrap it with a blank skipper
+source = skip_blank(source)
+\end{verbatim}
+At \href{http://www.radiopi.org/}{RadioPi} they have another problem: sometimes they have technical problems, and while they think they are doing a live show, they're making noise only in the studio, while only blank is on air; sometimes, the staff has so much fun (or is it something else ?) doing live shows that they live at the end of the show without thinking to turn off the live, and the listeners get some silence again. To avoid that problem we made the \verb+strip_blank+ operators which hides the stream when it's too blank (i.e. declare it as unavailable), which perfectly suits the typical setup used for live shows:
+
+\begin{verbatim}
+interlude = single("/path/to/sorryfortheblank.ogg")
+# After 5 sec of blank the microphone stream is ignored,
+# which causes the stream to fallback to interlude.
+# As soon as noise comes back to the microphone the stream comes
+# back to the live -- thanks to track_sensitive=false.
+stream = fallback(track_sensitive=false,
+	              [ strip_blank(length=5.,live) , interlude ])
+
+# Put that stream to a local file
+output.file(%vorbis, "/tmp/hop.ogg", stream)
+\end{verbatim}
+If you don't get the difference between these two operators, you should
+learn more about liquidsoap's notion of \href{sources.html}{source}.
+
+Finally, if you need to do some custom action when there's too much blank, we have \verb+on_blank+:
+
+\begin{verbatim}
+def handler()
+  system("/path/to/your/script to do whatever you want")
+end
+source = on_blank(handler,source)
+\end{verbatim}

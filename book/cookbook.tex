@@ -1,3 +1,4 @@
+\chapter{Cookbook}
 \section{Cookbook}
 The recipes show how to build a source with a particular feature. You can try short snippets by wrapping the code in an \verb+out(..)+ operator and passing it directly to liquidsoap:
 
@@ -85,7 +86,7 @@ source = once(single(input))
 # We use a clock with disabled synchronization
 clock.assign_new(sync=false,[source])
 
-# Finally, we output the source to an
+# Finally, we output the source to an
 # ogg/vorbis file
 output.file(%vorbis, output,fallible=true,
                      on_stop=shutdown,source)
@@ -193,7 +194,7 @@ to a source. It is useful when the original source do not have a built-in skip c
 # when it does not have one
 # by default
 def add_skip_command(s) =
- # A command to skip
+ # A command to skip
  def skip(_) =
    source.skip(s)
    "Done!"
