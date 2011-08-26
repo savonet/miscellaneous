@@ -10,6 +10,7 @@
 \newcommand{\prog}[1]{\emph{#1}}
 \newcommand{\Liquidsoap}{\prog{Liquisoap}\xspace}
 \newcommand{\eg}{e.g.~}
+\newcommand{\cf}{c.f.~}
 
 \author{David Baelde \and Romain Beauxis \and Samuel Mimram}
 \title{Creating Net Radios Using Liquidsoap}
@@ -298,4 +299,937 @@ enough liquidsoap for your use, you'll only need to refer to the
 Liquidsoap's \href{language.html}{scripting language}.  For a better
 understanding of liquidsoap, it is also useful to read a bit about the notions
 of \href{sources.html}{sources} and \href{requests.html}{requests}.
+
+
+
+\chapter{Understanding Liquidsoap}
+\section{Liquidsoap execution phases}
+There are various stages of running liquidsoap:
+
+\begin{itemize}
+\item \textbf{Parsing}: read scripts and scripting expressions, can fail with syntax errors.
+\item \textbf{Static analysis}: infer the type of all expressions, leaves some type unknown and may fail with type errors.
+\item \textbf{Instantiation}: when script is executed, sources get created. Remaining unknown \href{stream_contents.html}{stream types} are forced according to \verb+frame.*.channels+ settings, \href{clock.html}{clocks} are assigned (but unknown clocks may remain) and some sources are checked to be \href{source.htmls}{infallible}. Each of these steps may raise an error.
+\item \textbf{Collection}: Unknown clocks become the default wallclock so that all sources are assigned to one clock. Active sources newly attached to clocks are initialized for streaming, shutdown sources are detached from their clocks, and clocks are started or destroyed as needed. Streaming has started.
+
+\end{itemize}
+Usually, liquidsoap is ran by passing one or several scripts and expressions to execute. Those expressions set up some sources, and outputs typically don't change anymore. If those initially provided active sources fail to be initialized (invalid parameter, fail to connect, etc.) liquidsoap will terminate with an error.
+
+It is however possible to \textbf{dynamically} create active sources,
+through registered server commands, event handlers, etc.
+They will be initialized and run as statically created ones.
+In \textbf{interactive} mode (passing the \verb+--interactive+ option)
+it is also possible to input expressions in a liquidsoap prompt,
+and their execution can trigger the creation of new outputs.
+
+Outputs can be desactivated using \verb+source.shutdown()+:
+they will stop streaming and will be destroyed.
+
+The full liquidsoap instance
+can be shutdown using the \verb+shutdown()+ command.
+
+\section{Getting some help}
+Liquidsoap is a self-documented application, which means that it can provide
+help about several of its aspects.  You will learn here how to get help by
+yourself, by asking liquidsoap. If you do not succeed in asking the tool, you
+can of course get help from humans, preferably on the mailing list
+\verb+savonet-users@lists.sf.net+.
+
+\subsection{Scripting API}
+When scripting in liquidsoap, one uses functions that are either \emph{builtin}
+(\emph{e.g.} \verb+fallback+ or \verb+output.icecast.vorbis+) or defined in the
+\href{script_loading.html}{script library} (\emph{e.g} \verb+out+).  All these
+functions come with a documentation, that you can access by executing
+\verb+liquidsoap -h FUNCTION+ on the command-line. For example:
+
+\begin{verbatim}
+$ liquidsoap -h sine
+*** One entry in scripting values:
+Generate a sine wave.
+Category: Source / Input
+Type: (?id:string, ?duration:float, ?float)->source
+Parameters:
+* id :: string (default "")
+    Force the value of the source ID.
+* duration :: float (default 0.)
+* (unlabeled) :: float (default 440.)
+    Frequency of the sine.
+\end{verbatim}
+Of course if you do not know what function you need, you'd better go through the
+\href{reference.html}{API reference}.
+
+\subsection{Server commands}
+The server (\cf the \href{server.html}{server} tutorial) offers some help
+about its commands.  Once connected to it (either via a TCP or UNIX socket) the
+\verb+help+ command will give you a list of available commands together with a
+short usage line.  You can then get more detailed information about a specific
+command by typing \verb+help COMMAND+:
+
+\begin{verbatim}
+$ telnet localhost 1234
+Trying 127.0.0.1...
+Connected to localhost.localdomain.
+Escape character is '^]'.
+help
+Available commands:
+[...]
+| queue.ignore <rid>
+| queue.push <uri>
+| queue.queue
+[...]
+Type "help <command>" for more information.
+END
+help queue.push
+
+Help for command queue.push.
+
+Usage: queue.push <uri>
+  Push a new request in the queue.
+END
+\end{verbatim}
+
+\subsection{Settings}
+Liquidsoap scripts contain expression like \verb+set("log.stdout",true)+.  These
+are \emph{settings}, global variables affecting the behaviour of the
+application.  Here, the first parameter identifies a setting its path, and the
+second one specifies its new value.
+
+You can have a list of available settings, with their documentation, by running
+\verb+liquidsoap --conf-descr+.  If you are interested in a particular settings
+section, for example server-related stuff, use
+\verb+liquidsoap --conf-descr-key server+.
+
+The output of these commands is a valid liquidsoap script, which you can edit to
+set the values that you want, and load it
+(\href{script_loading.html}{implicitly} or not) before you other scripts.
+
+You can browse online the \href{settings.html}{list of available settings}.
+
+\subsection{All plugins}
+Several aspects of liquidsoap work with a notion of plugin: builtin scripting
+functions, audio decoders for files and streams, metadata decoders, protocols,
+etc. The list of plugins can be used to check that your build of liquidsoap has
+such or such feature, or simply to browse available functions -- actually, the
+\href{reference.html}{reference} is built from that output.
+
+You can get the pretty hairy list of all available plugins from the command
+\verb+liquidsoap --list-plugins+, or \verb+liquidsoap --list-plugins-xml+ for a
+more parsable XML output.
+
+\subsection{Other help resources}
+TODO: the website, the mailing-lists, etc.
+
+
+
+
+
+
+
+
+
+
+\chapter{Signal processing}
+\section{Normalization and replay gain}
+\subsection{Normalization}
+If you want to have a constant average volume on an audio stream, you can use
+the \verb+normalize+ operator. However, this operator cannot guess the volume of
+the whole stream, and can be ``surprised'' by rapide changes of the volume. This
+can lead to a volume that is too low, too high, oscillates. In some cases,
+dynamic normalization also creates saturation.
+
+To tweak the normalization, several parameters are available. These are listed
+and explained in the \href{reference.html}{reference} and also visible by
+executing \verb+liquidsoap -h normalize+. However, if the stream you want to
+normalize consist of audio files, using the replay gain technology might be a
+better choice.
+
+\subsection{Replay gain}
+\href{http://www.replaygain.org}{Replay gain} is a proposed standard that is
+(more or less) respected by many open-source tools. It provides a way to obtain
+an overall uniform perceived loudness over a track or a set of tracks. The
+computation of the loudness is based on how the human ear actually perceives
+each range of frequency. Having computed the average perceived loudness on a
+track or an album, it is easy to renormalize the tracks when playing, ensuring a
+comfortable, consistent listening experience.
+
+Because it is track-based, replay gain does not suffer from the typical problems
+of stream-based, dynamic approaches. Namely, these distort the initial audio,
+since they constantly adapt the amplification factor. Sometimes it oscillates
+too quickly in a weird audible way. Sometimes it does not adapt quickly enough,
+leading to under or over-amplified sections.
+
+On the other hand, replay gain has its drawbacks. First, it requires an initial
+computation that is a bit costly. This computation can be done once for all for
+local files -- subsequent calls can then retrieve the result from the
+metadata. Although not impossible in theory, there is no recipe for Liquidsoap
+to offer the same feature on remote files.
+
+\subsubsection{How to use replay gain in Liquidsoap}
+In theory, there are two independant parts: computing the replay gain and
+tagging the files with that information, and retrieving the gain from the
+metadata when playing the file, in order to renormalize it. In practice,
+everybody will want to use the same script that triggers the computation if
+needed even if they do not need that part, because the replay gain metadata is
+stored in some exotic format that liquidsoap does not support directly
+yet. Instead, it relies on the replay gain computation tools to extract them.
+
+\subsubsection{Renormalizing according to some metadata field}
+The \verb+amplify()+ operator can behave according to metadata. Its
+\verb+override+ parameter indicates a metadata field that, when present and
+well-formed, overrides the amplification factor. Well formed fields are floats
+(e.g. \verb+2+ or \verb+0.7+) for linear amplification factors and floats
+postfixed with \verb+dB+ (\eg \verb+-2 dB+) for logarithmic ones.
+
+For replay gain implementation, the \verb+amplify+ operator would typically be
+added immediately on top of the basic tracks source, before transitions or other
+audio processing operators. We follow these lines in the next example, where the
+\verb+replay_gain+ field is used to carry the information:
+\begin{verbatim}
+list    = playlist("~/playlist")
+default = single("~/default.ogg")
+
+s = fallback([list,default])
+s = amplify(1.,override="replay_gain",s)
+
+# Here: other effects, and finally the output...
+\end{verbatim}
+You may also take care of not losing the information brought by the
+metadata. This may be the case for instance if you use \verb+smart_crossfade+
+before applying normalization. Hence, normalization should be done as soon as
+possible in the script, if possible just after the initial source.
+
+\subsubsection{Computing and retrieving the data}
+In practice, the replay gain information can be found in various fields
+depending on the audio format and the replay gain computation tool.
+
+Liquidsoap provides a script for extracting the replay gain value from
+\verb+mp3+, \verb+ogg/vorbis+ and \verb+flac+ files. It requires the tools
+\verb+mp3gain+ (resp. \verb+vorbisgain+ and \verb+ogginfo+,
+resp. \verb+metaflac+) for \verb+mp3+ (resp. \verb+ogg/vorbis+,
+resp. \verb+flac+) files processing, and will affect your files: after the first
+computation of the replay gain, that information will be stored in the metadata.
+
+Optionally, this script can also use the \verb+file+ binary in order to detect
+the content of an audio file not only using its extension, which is necessary
+with, for instance, protocols that download files across the network, such as
+\verb+ftp+.
+
+Then, there are at least two ways to use it in your liquidsoap script: using the
+replay gain metadata resolver, or the \verb+replay_gain+ protocol.
+
+The metadata solution is uniform: without changing anything, \emph{all} your
+files will have a new \verb+replay_gain+ metadata when the computation
+suceeded. However, this can be problematic, for example, for jingles, or if you
+have large files that would take a very long time to be analyzed by replaygain
+tools.  The protocol solution gives you more control on when the replaygain
+analysis is performed, but requires that you change some \verb+uri+ into
+\verb+replay_gain:uri+.  We briefly discuss below how to do it conveniently in
+some typical cases.
+
+Note that our replaygain support for remote files can be problematic.  As such,
+it would analyze the file after each download, which may be uselessly
+costly. One should instead make sure that the file has been analyzed on the
+remote machine, so that the local analysis only retrieves the precomputed
+value. In any case, remote files can only be treated through the addition of a
+metadata resolver, and cannot work with the \verb+replay_gain+ protocol
+technique (\verb+replaygain:ftp://host/file.ogg+ will call the script using the
+\verb+ftp://host/file.ogg+ as the URI parameter, and it will fail).
+
+The replay gain metadata resolver is not enabled by default. You can do it by
+adding the following code in your script:
+\begin{verbatim}
+enable_replaygain_metadata ()
+\end{verbatim}
+The \verb+replay_gain+ protocol is enabled by default.  In this case, everytime
+you need replaygain information about a file, access it through your new
+protocol: for example, replace \verb+/path/to/file.mp3+ by
+\verb+replay_gain:/path/to/file.mp3+.  The resolving of the protocol will
+trigger a call to our script, which will return an annotated request, finally
+resulting in your file with the extra \verb+replay_gain+ metadata.
+
+Prepending \verb+replay_gain:+ is easy if you are using a script behind some
+\verb+request.dynamic+ operator. If you are using the \verb+playlist+ operator,
+you can use its \verb+prefix+ parameter.
+
+
+\section{LADSPA plugins in Liquidsoap}
+\href{http://www.ladspa.org/}{LADSPA} is a standard that allows software audio
+processors and effects to be plugged into a wide range of audio synthesis and
+recording packages.
+
+If enabled, Liquidsoap supports LADSPA plugins. In this case, installed plugins
+are detected at run-time and are all available in Liquidsoap under a name of the
+form: \verb+ladspa.plugin+, for instance \verb+ladspa.karaoke+,
+\verb+ladspa.flanger+ etc..
+
+The full list of those operators can be found using
+\verb+liquidsoap --list-plugins+.  Also, as usual,
+\verb+liquidsoap -h ladspa.plugin+ returns a detailed description of each
+LADSPA's operators.  For instance:
+
+\begin{verbatim}
+./liquidsoap -h ladspa.flanger
+*** One entry in scripting values:
+Flanger by Steve Harris <steve@plugin.org.uk>.
+Category: Source / Sound Processing
+Type: (?id:string,?delay_base:'a,?feedback:'b,
+ ?lfo_frequency:'c,?max_slowdown:'d,
+ source(audio='#e,video='#f,midi='#g))->
+source(audio='#e,video='#f,midi='#g)
+where 'a, 'b, 'c, 'd is either float or ()->float
+Flag: hidden
+Parameters:
+* id : string (default "")
+    Force the value of the source ID.
+* delay_base : anything that is either float or ()->float (default 6.32499980927)
+    Delay base (ms) (0.1 <= delay_base <= 25).
+* feedback : anything that is either float or ()->float (default 0.)
+    Feedback (-1 <= feedback <= 1).
+* lfo_frequency : anything that is either float or ()->float (default 0.334370166063)
+    LFO frequency (Hz) (0.05 <= lfo_frequency <= 100).
+* max_slowdown : anything that is either float or ()->float (default 2.5)
+    Max slowdown (ms) (0 <= max_slowdown <= 10).
+* (unlabeled) : source(audio='#e,video='#f,midi='#g) (default None)
+\end{verbatim}
+For advanced users, it is worth nothing that most of the parameters associated
+with LADSPA operators can take a function, for instance in the above:
+\begin{verbatim}
+max_slowdown : anything that is either float or ()->float
+\end{verbatim}
+This means that those parameters may be dynamically changed while running a
+liquidsoap script.
+
+\section{Blank detection}
+\href{index.html}{Liquidsoap} has three operators for dealing with blanks.
+
+On GeekRadio, we play many files, some of which include bonus tracks, which means that they end with a very long blank and then a little extra music. It's annoying to get that on air. The \verb+skip_blank+ operator skips the current track when a too long blank is detected, which avoids that. The typical usage is simple:
+
+\begin{verbatim}
+# Wrap it with a blank skipper
+source = skip_blank(source)
+\end{verbatim}
+At \href{http://www.radiopi.org/}{RadioPi} they have another problem: sometimes they have technical problems, and while they think they are doing a live show, they're making noise only in the studio, while only blank is on air; sometimes, the staff has so much fun (or is it something else ?) doing live shows that they live at the end of the show without thinking to turn off the live, and the listeners get some silence again. To avoid that problem we made the \verb+strip_blank+ operators which hides the stream when it's too blank (i.e. declare it as unavailable), which perfectly suits the typical setup used for live shows:
+
+\begin{verbatim}
+interlude = single("/path/to/sorryfortheblank.ogg")
+# After 5 sec of blank the microphone stream is ignored,
+# which causes the stream to fallback to interlude.
+# As soon as noise comes back to the microphone the stream comes
+# back to the live -- thanks to track_sensitive=false.
+stream = fallback(track_sensitive=false,
+	              [ strip_blank(length=5.,live) , interlude ])
+
+# Put that stream to a local file
+output.file(%vorbis, "/tmp/hop.ogg", stream)
+\end{verbatim}
+If you don't get the difference between these two operators, you should
+learn more about liquidsoap's notion of \href{sources.html}{source}.
+
+Finally, if you need to do some custom action when there's too much blank, we have \verb+on_blank+:
+
+\begin{verbatim}
+def handler()
+  system("/path/to/your/script to do whatever you want")
+end
+source = on_blank(handler,source)
+\end{verbatim}
+
+
+
+\chapter{Advanced topics}
+\section{External decoders}
+You can use external programs in liquidsoap to decode audio files. The program must be able to
+output WAV data to its standard output (\verb+stdout+) and, posssibly, read encoded data from its 
+standard input.
+
+Please note that this feature is not available under Windows.
+
+\subsection{Basic operators}
+External decoders are registered using the \verb+add_decoder+ and \verb+add_oblivious_decoder+ operators. 
+They are invoked the following way: 
+
+\subsubsection{add\_decoder}
+\begin{verbatim}
+add_decoder(name="my_decoder",description="My custom decoder",
+            test,decoder)@, where:
+\end{verbatim}
+\verb+add_decoder+ is used for external decoders that can read the encoded data from their standard
+input (stdin) and write the decoded data as WAV to their standard output (stdout). This operator
+is recommended because its estimation of the remaining time is better than the estimation done
+by the decoders registered using \verb+add_oblivious_decoder+. The important parameters are:
+
+\begin{itemize}
+\item \verb+test+ is a function used to determine if the file should be decoded by the decoder. Returned values are: \begin{itemize}
+\item \verb+0+: no decodable audio, 
+\item \verb+-1+: decodable audio but number of audio channels unknown, 
+\item \verb+x+: fixed number of decodable audio channels.
+
+\end{itemize}
+
+\item \verb+decoder+ is the string containing the shell command to run to execute the decoding process.
+
+\end{itemize}
+
+\subsubsection{add\_oblivious\_decoder}
+\verb+add_oblivious_decoder+ is very similar to \verb+add_decoder+. The main difference is that the
+decoding program reads encoded data directly from the local files and not its standard input.
+Decoders registered using this operator do not have a reliable estimation of the remaining
+time. You should use \verb+add_oblivious_decoder+ only if your decoding program is not able
+to read the encoded data from its standard input.
+
+\begin{verbatim}
+add_oblivious_decoder(name="my_decoder",description="My custom decoder",
+                      buffer=5., test,decoder)@, where:
+\end{verbatim}
+\verb+add_decoder+ is used for external decoders that can read the encoded data from their standard
+input (stdin) and write the decoded data as WAV to their standard output (stdout). This operator
+is recommended because its estimation of the remaining time is better than the estimation done
+by the decoders registered using \verb+add_oblivious_decoder+. The important parameters are:
+
+\begin{itemize}
+\item \verb+test+ is a function used to determine if the file should be decoded by the decoder. Returned values are: \begin{itemize}
+\item \verb+0+: no decodable audio,
+\item \verb+-1+: decodable audio but number of audio channels unknown,
+\item \verb+x+: fixed number of decodable audio channels.
+
+\end{itemize}
+
+\item \verb+decoder+ is a function that receives the name of the file that should be decoded and returns a string containing the shell command to run to execute the decoding process.
+
+\end{itemize}
+\subsubsection{add\_metadata\_resolver}
+You may also register new metadata resolvers using the \verb+add_metadata_resolver+ operator. It is invoked the
+following way: \verb+add_metadata_resolver(format,resolver)+, where:
+
+\begin{itemize}
+\item \verb+format+ is the name of the resolved format. It is only informative.
+\item \verb+resolver+ is a function \verb+f+ that returns a list of metadata of
+  the form: \verb+(label, value)+. It is invoked the following way:
+  \verb+f(format=name,file)+, where:\begin{itemize}
+  \item \verb+format+ contains the name of the format, as returned by the
+    decoder that accepted to decode the file. \verb+f+ may return immediately if
+    this is not an expected value.
+  \item \verb+file+ is the name of the file to decode.
+\end{itemize}
+\end{itemize}
+
+\subsection{Wrappers}
+On top of the basic operators, wrappers have been written for some common
+decoders. This includes the \verb+flac+ and \verb+faad+ decoders, by
+default. All the operators are defined in \verb+externals.liq+.
+
+\subsection{The FLAC decoder}
+The flac decoder uses the \verb+flac+ command line. It is enabled if the binary
+can be found in the current \verb+$PATH+.
+
+Its code is the following:
+% \begin{verbatim}
+  % def test_flac(file) =
+    % if test_process("which metaflac") then
+      % channels = list.hd(get_process_lines("metaflac \
+                                            % --show-channels #{quote(file)} \
+                                            % 2>/dev/null"))
+      % # If the value is not an int, this returns 0 and we are ok :)
+      % int_of_string(channels)
+    % else
+      % # Try to detect using mime test..
+      % mime = get_mime(file)
+      % if string.match(pattern="flac",file) then
+        % # We do not know the number of audio channels
+        % # so setting to -1
+        % (-1)
+      % else
+        % # All tests failed: no audio decodable using flac..
+        % 0
+      % end
+    % end
+  % end
+  % add_decoder(name="FLAC",description="Decode files using the flac \
+              % decoder binary.", test=test_flac,flac_p)
+% \end{verbatim}
+Additionaly, a metadata resolver is registered when the \verb+metaflac+ command
+can be found in the \verb+$PATH+:
+
+\begin{verbatim}
+if test_process("which metaflac") then
+  log(level=3,"Found metaflac binary: \
+               enabling flac external metadata resolver.")
+  def flac_meta(file)
+    ret = get_process_lines("metaflac --export-tags-to=- \
+                            #{quote(file)} 2>/dev/null")
+    ret = list.map(string.split(separator="="),ret)
+    # Could be made better..
+    def f(l',l)=
+      if list.length(l) >= 2 then
+        list.append([(list.hd(l),list.nth(l,1))],l')
+      else
+        if list.length(l) >= 1 then
+          list.append([(list.hd(l),"")],l')
+        else
+          l'
+        end
+      end
+    end
+  list.fold(f,[],ret)
+  end
+  add_metadata_resolver("FLAC",flac_meta)
+end
+\end{verbatim}
+
+\subsubsection{The faad decoder}
+The faad decoder uses the \verb+faad+ program, if found in the \verb+$PATH+.  It
+can decode AAC and AAC+ audio files. This program does not support reading
+encoded data from its standard input so the decoder is registered using
+\verb+add_oblivious_decoder+.
+
+Its code is the following:
+
+% \begin{verbatim}
+  % aac_mimes = ["audio/aac", "audio/aacp", "audio/3gpp", "audio/3gpp2", "audio/mp4",
+               % "audio/MP4A-LATM", "audio/mpeg4-generic", "audio/x-hx-aac-adts"]
+  % aac_filexts = ["m4a", "m4b", "m4p", "m4v",
+                 % "m4r", "3gp", "mp4", "aac"]
+
+  % # Faad is not very selective so
+  % # We are checking only file that
+  % # end with a known extension or mime type
+  % def faad_test(file) =
+    % # Get the file's mime
+    % mime = get_mime(file)
+    % # Test mime
+    % if list.mem(mime,aac_mimes) then
+      % true
+    % else
+      % # Otherwise test file extension
+      % ret = string.extract(pattern='\.(.+)$',file)
+        % if list.length(ret) != 0 then
+          % ext = ret["1"]
+          % list.mem(ext,aac_filexts)
+        % else
+          % false
+        % end
+    % end
+  % end
+
+  % if test_process("which faad") then
+    % log(level=3,"Found faad binary: enabling external faad decoder and \
+                 % metadata resolver.")
+    % faad_p = (fun (f) -> "faad -w #{quote(f)} 2>/dev/null")
+    % def test_faad(file) =
+      % if faad_test(file) then
+        % channels = list.hd(get_process_lines("faad -i #{quote(file)} 2>&1 | \
+                                              % grep 'ch,'"))
+        % ret = string.extract(pattern=", (\d) ch,",channels)
+        % ret =
+          % if list.length(ret) == 0 then
+          % # If we pass the faad_test, chances are
+          % # high that the file will contain aac audio data..
+            % "-1"
+          % else
+            % ret["1"]
+          % end
+        % int_of_string(default=(-1),ret)
+      % else
+        % 0
+      % end
+    % end
+    % add_oblivious_decoder(name="FAAD",description="Decode files using \
+                          % the faad binary.", test=test_faad, faad_p)
+    % def faad_meta(file) =
+      % if faad_test(file) then
+        % ret = get_process_lines("faad -i \
+                     % #{quote(file)} 2>&1")
+        % # Yea, this is tuff programming (again) !
+        % def get_meta(l,s)=
+          % ret = string.extract(pattern="^(\w+):\s(.+)$",s)
+          % if list.length(ret) > 0 then
+            % list.append([(ret["1"],ret["2"])],l)
+          % else
+            % l
+          % end
+        % end
+        % list.fold(get_meta,[],ret)
+      % else
+        % []
+      % end
+    % end
+    % add_metadata_resolver("FAAD",faad_meta)
+  % end
+% \end{verbatim}
+
+\subsection{External encoders}
+You can use any external program that accepts wav or raw PCM data to encode
+audio data and use the resulting compressed stream as an output, either to a
+file, a pipe, or even icecast.
+
+When using an external encoding process, uncompressed PCM data will be sent to
+the process through its standard input (\verb+stdin+), and encoded data will be
+read through its standard output (\verb+stdout+). When using a process that does
+only file input or output, \verb+/dev/stdin+ and \verb+/dev/stdout+ can be used,
+though this may generate issues if the encoding process expects to be able to go
+backward/forward in the file.
+
+The main operators that can be used with external encoders are:
+\begin{itemize}
+\item \verb+output.file+
+\item \verb+output.icecast+
+\end{itemize}
+In order to use external encoders with these operators, you have to use the
+\verb+%external+ \href{encoding_formats.html}{encoding format}.
+Its syntax is:
+
+\begin{verbatim}
+%external(channels=2,samplerate=44100,header=true,
+          restart_on_crash=false,
+          restart_on_new_track,
+          restart_after_delay=<int>,
+          process="")
+\end{verbatim}
+The available options are:
+
+\begin{itemize}
+\item \verb+process+: this parameter is a function that takes the current metadata and return the process to start.
+\item \verb+header+: if set to \verb+false+ then no WAV header will be added to the data fed to the encoding process, thus the encoding process shall operate on RAW data.
+\item \verb+restart_on_crash+: wether to restart the encoding process if it crashed. Useful when the external process fails to encode properly data after some time.
+\item \verb+restart_on_new_track+: restart encoding process on each new track. Useful in conjonction with the \verb+process+ parameter for audio formats that need a new header, possibly with metadatas, for each new track. This is the case for the ogg container.
+\item \verb+restart_encoder_delay+: Restart the encoder after some delay. This can be useful for encoders that cannot operate on infinite streams, or are buggy after some time, like the \verb+lame+ binary. The default for \verb+lame+ and \verb+accplusenc+-based encoders is to restart the encoder every hour.
+
+\end{itemize}
+Only one of \verb+restart_encoder_delay+ or \verb+restart_on_new_track+ should be used.
+
+The restart mechanism strongly relies on the good behaviour of the encoding process. The restart operation will 
+close the standard input of the encoding process. The encoding process is then expected to finish its own operations and
+close its standard output. If it does not close its standard output, the encoding task will not finish. 
+
+If your encoding process has this issue, you should turn the \verb+restart_on_crash+ option to \verb+true+ and kill the encoding
+process yourself.
+
+If you use an external encoder with the \verb+output.icecast+ operator,
+you should also use the following options of \verb+output.icecast+:
+
+\begin{itemize}
+\item \verb+icy_metadata+: send new metadata as ICY update. This is the case for headerless formats, such as MP3 or AAC, and it appears to work also for ogg/vorbis streams.
+\item \verb+format+: Content-type (mime) of the data sent to icecast. For instance, for ogg data, it is one of ``application/ogg'', ``audio/ogg'' or ``video/ogg'' and for mp3 data it is ``audio/mpeg''.
+
+\end{itemize}
+
+\chapter{Generating video streams}
+\section{A simple video script}
+The other day, I wanted to prepare some videos of my favorite reggae and soul
+tunes for uploading them to YouTube.  My goal was very simple: prepare a video
+with the music, and a static image.
+
+After briefly digging for a simple software to do that, which I could not find,
+I said ``hey, why not doing it with liquidsoap''?  Well, that is fairly easy!
+
+Here is the code:
+% \begin{verbatim}
+ % # Log to stdout
+ % set("log.file",false)
+ % set("log.stdout",true)
+ % set("log.level",4)
+ % # Enable video
+ % set("frame.video.width",640)
+ % set("frame.video.height",480)
+
+ % audio_file = "/tmp/bla.mp3"
+ % video_file = "/tmp/bla.jpg"
+
+ % # Grab file's title
+ % r = request.create(audio_file)
+ % title =
+   % if request.resolve(r) then
+     % meta = request.metadata(r)
+     % meta["title"]
+   % else
+     % # File not readable
+     % log("Error: cannot decode audio file!")
+     % shutdown ()
+     % ""
+   % end
+ % title =
+   % if title == "" then
+      % "Unknow title"
+   % else
+      % title
+   % end
+
+ % # The audio song.
+ % audio = request.queue(interactive=false,queue=[r])
+
+ % # Create a video source with the image for video track
+ % video = single(video_file)
+
+ % # Mux audio and video
+ % #source = mux_audio(audio=audio,video)
+ % source = mux_video(video=video,audio)
+
+ % # Disable real-time processing, to process with the maximun speed
+ % source = clock(sync=false,source)
+
+ % # Output to a theora file, shutdown on stop
+ % output.file(%ogg(%vorbis,%theora),
+             % id="youtube",fallible=true,
+             % on_stop=shutdown,reopen_on_metadata=true,
+             % "/tmp/#{title}.ogv",
+             % source)
+% \end{verbatim}
+This should produce on file named \verb+<title>.ogv+ where \verb+<title>+ is the
+title metadata of your song.
+
+Inspired from
+\href{http://blog.rastageeks.org/spip.php?article27}{blog.rastageeks.org}.
+
+
+
+
+\chapter{Frequently asked questions}
+\subsection{What does this message means?}
+\subsubsection{Type error}
+Liquidsoap might also reject a script with a series of errors of the form
+\begin{verbatim}
+this value has type ... but it should be a subtype of ...
+\end{verbatim}
+Usually the last error tells you what the problem is, but the previous errors
+might provide a better information as to where the error comes from.
+
+For example, the error might indicate that a value of type \verb+int+ has been
+passed where a float was expected, in which case you should use a conversion, or
+more likely change an integer value such as \verb+13+ into a float \verb+13.+.
+
+A type error can also show that you're trying to use a source of a certain
+content type (e.g., audio) in a place where another content type (e.g., pure
+video) is required. In that case the last error in the list is not the most
+useful one, but you will read something like this above:
+
+\begin{verbatim}
+At ...:
+  this value has type
+    source(audio=?A+1,video=0,midi=0)
+    where ?A is a fixed arity type
+  but it should be a subtype of
+    source(audio=0,video=1,midi=0)
+\end{verbatim}
+Sometimes, the type error actually indicates a mistake in the order or labels of
+arguments. For example, given \verb+output.icecast(mount="foo.ogg",source)+
+liquidsoap will complain that the second argument is a source
+(\verb+source(?A)+) but should be a format (\verb+format(?A)+): indeed, the
+first unlabelled argument is expected to be the encoding format, e.g.,
+\verb+%vorbis+, and the source comes only second.
+
+Finally, a type error can indicate that you have forgotten to pass a mandatory
+parameter to some function. For example, on the code
+\verb+fallback([crossfade(x),...])+, liquidsoap will complain as follows:
+
+\begin{verbatim}
+At line ...:
+  this value has type
+    (?id:string, ~start_next:float, ~fade_in:float,
+     ~fade_out:float)->source(audio=?A,video=?B,midi=0)
+    where ?B, ?A is a fixed arity type
+  but it should be a subtype of
+    source(audio=?A,video=?B,midi=0)
+    where ?B, ?A is a fixed arity type
+\end{verbatim}
+Indeed, \verb+fallback+ expects a source, but \verb+crossfade(x)+ is still a
+function expecting the parameters \verb+start_next+, \verb+fade_in+ and
+\verb+fade_out+.
+
+\subsubsection{That source is fallible!}
+See the \href{quick_start.html}{quickstart}, or read more about
+\href{sources.html}{sources}.
+
+\subsubsection{Clock error}
+Read about \href{clocks.html}{clocks} for the errors
+\verb+a source cannot belong to two clocks+ and
+\verb+cannot unify two nested clocks+.
+
+\subsubsection{We must catchup x.xx!}
+This error means that a clock is getting late in liquidsoap. This can be caused
+by an overloaded CPU, if your script is doing too much encoding or processing:
+in that case, you should reduce the load on your machine or simplify your
+liquidsoap script. The latency may also be caused by some lag, for example a
+network lag will cause the icecast output to hang, making the clock late.
+
+The first kind of latency is problematic because it tends to accumulate,
+eventually leading to the restarting of outputs:
+\begin{verbatim}
+Too much latency!  Resetting active source...
+\end{verbatim}
+
+The second kind of latency can often be ignored: if you are streaming to an
+icecast server, there are several buffers between you and your listeners which
+make this problem invisible to them. But in more realtime applications, even
+small lags will result in glitches.
+
+In some situations, it is possible to isolate some parts of a script from the
+latency caused by other parts. For example, it is possible to produce a clean
+script and back it up into a file, independently of its output to icecast (which
+again is sensitive to network lags).  For more details on those techniques, read
+about \href{clocks.html}{clocks}.
+
+\subsubsection{Unable to decode ``file'' as @{audio=2;video=0;midi=0}@!}
+This log message informs you that liquidsoap failed to decode a file, not
+necessarily because it cannot handle the file, but also possibly because the
+file does not contain the expected media type. For example, if video is
+expected, an audio file will be rejected.
+
+The case of mono files is often surprising. Since liquidsoap does not implicitly
+convert between media formats, input files must be stereo if the output expects
+stereo data. As a result, people often get this error message on files which
+they expected to play correctly. The simple way to fix this is to use the
+\verb+audio_to_stereo()+ operator to allow any kind of audio on its input, and
+produce stereo as expected on its output.
+
+\subsubsection{Exceptions}
+Liquidsoap dies with messages such as these by the end of the log:
+
+\begin{verbatim}
+... [threads:1] Thread "XXX" aborts with exception YYY!
+... [stderr:3] Thread 2 killed on uncaught exception YYY.
+... [stderr:3] Raised at file ..., line ..., etc.
+\end{verbatim}
+Those internal errors can be of two sorts:
+
+\begin{itemize}
+\item \textbf{Bug}: Normally, this means that you've found a bug, which you
+  should report on the mailing list or bug tracker.
+\item \textbf{User error}: In some cases, we let an exception go on user errors,
+  instead of nicely reporting and handling it. By looking at the surrounding log
+  messages, you might realize that liquidsoap crashed for a good reason, that
+  you are responsible for fixing. You can still report a bug: you should not
+  have seen an exception and its backtrace.
+
+\end{itemize}
+In any case, once that kind of error happens, there is no way for the user to
+prevent liquidsoap from crashing. Those exceptions cannot be caught or handled
+in any way at the level of liquidsoap scripts.
+
+\subsection{Troubleshooting}
+\subsubsection{Pulseaudio}
+When using ALSA input or output or, more generaly any audio input or output that
+is not using pulseaudio, you should disable pulseaudio, which is often installed
+by default. Pulseaudio emulates ALSA but this also generates bugs, in particular
+errors of this form:
+
+\begin{verbatim}
+Alsa.Unknown_error(1073697252)!
+\end{verbatim}
+There are two things you may do:
+
+\begin{itemize}
+\item Make sure your alsa input/output does not use pulseaudio
+\item Disable pulseaudio on your system
+
+\end{itemize}
+In the first case, you should first find out which sound card you want to use,
+with the command \verb+aplay -l+. An example of its output is:
+
+\begin{verbatim}
+**** List of PLAYBACK Hardware Devices ****
+card 0: Intel [HDA Intel], device 0: STAC92xx Analog [STAC92xx Analog]
+  Subdevices: 1/1
+  Subdevice #0: subdevice #0
+\end{verbatim}
+In this case, the card we want to use is: device \verb+0+, subdevice \verb+0+,
+thus: \verb+hw:0,0+. We now create a file \verb+/etc/asound.conf+ (or
+\verb+~/.asoundrc+ for single-user configuration) that contains the following:
+
+\begin{verbatim}
+pcm.liquidsoap {
+        type plug
+        slave { pcm "hw:0,0" }
+}
+\end{verbatim}
+This creates a new alsa device that you can use with liquidsoap. The \verb+plug+
+operator in ALSA is used to work-around any hardward limitations in your device
+(mixing multiple outputs, resampling etc.). In some cases you may need to read
+more about ALSA and define your own PCM device.
+
+Once you have created this device, you can use it in liquidsoap as follows:
+\begin{verbatim}
+input.alsa(device="pcm.liquidsoap", ...)
+\end{verbatim}
+In the second case -- disabling pulseaudio, you can edit the file
+\verb+/etc/pulse/client.conf+ and change or add this line:
+
+\begin{verbatim}
+autospawn = no
+\end{verbatim}
+And kill any running pulseaudio process:
+
+\begin{verbatim}
+killall pulseaudio
+\end{verbatim}
+Otherwise you may simply remove pulseaudio's packages, if you use Debian or
+Ubuntu:
+
+\begin{verbatim}
+apt-get remove pulseaudio libasound2-plugins
+\end{verbatim}
+
+\subsubsection{Listeners are disconnected at the end of every track}
+Several media players, including renowned ones, do not properly support
+Ogg/Vorbis streams: they treat the end of a track as an end of file, resulting
+in the disconnection.
+
+Players that are affected by this problem include VLC.  Players that are not
+affected include ogg123, liquidsoap.
+
+One way to work around this problem is to not use Ogg/Vorbis (which we do not
+recommend) or to not produce tracks within a Vorbis stream.  This is done by
+merging liquidsoap tracks (for example using
+\verb+add(normalize=false,[blank(),source])+) and also not passing any metadata
+(which is also a result of the previous snippet).
+
+\subsubsection{Encoding blank}
+Encoding pure silence is often too effective for streaming: data is so
+compressed that there is nothing to send to listeners, whose clients eventually
+disconnect. Therefore, it is a good idea to use a non-silent jingle instead of
+\verb+blank()+ to fill in the blank. You can also achieve various effects using
+synthesis sources such as \verb+noise()+, \verb+sine()+, etc.
+
+
+\appendix
+\chapter{The origins of Liquidsoap}
+The historical webradio, geek radio, was founded by David Baelde and Samuel
+Mimram at the ENS Lyon.
+
+The very first version was, as many other radios, a Perl function called by
+Ices. It played files, one by one. On the campus, there was plenty of audio
+files available, so they soon wanted to index them and be able to ask easily for
+one file to be streamed. Samuel made a dirty campus indexer in OCaml, and David
+made an ugly Perl hack for adding user requests to the original system. It
+probably kind of worked for a while. Then they wanted something more, and
+realized it was all too ugly.
+
+So they made the binding of libshout for OCaml and built the first streamer in
+pure OCaml. It had a simple telnet interface so an IRC bot could send user
+requests easily to it, same for the website. There were two request queues, one
+for users, one for admins. But it was still not so nicely designed, and they
+felt it when they needed more. They wanted scheduling, especially techno music
+at night.
+
+Around that time students had to set up a project for one of their
+courses. David and Samuel proposed to build a complete flexible webradio system,
+that's Savonet. To give jobs to everybody, they had planned a complete rewriting
+of every part, with grand goals. A new website with so much features, a new
+intelligent multilingual bot, a new network libraries for glueing that,
+etc. Most died. But still, Liquidsoap was born, and they had plenty of new
+libraries for OCaml. Since then, Liquidsoap has been greatly enhanced, and is
+now spreading outside the ENS Lyon.
+
+The liquidsoap script schedules several static (but periodically reloaded)
+playlists played on different times, adds jingle to the usual stream every hour,
+adds short live interventions, or completely switches to live shows when
+available. It accepts user requests, which have priority over static playlists
+but not live shows, and adds speech-synthetized metadata information at the end
+of requests.
+
+Geek Radio used to have a Strider daemon running to fill our database. Since
+that project is now dead, a simple hack is now used instead: bubble.
+
+The usual way of sending a request is via an IRC bot, which queries the database
+and sends the chosen URI to liquidsoap.
+
 \end{document}
