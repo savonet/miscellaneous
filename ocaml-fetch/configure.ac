@@ -1,12 +1,12 @@
 # $Id$
 
 # check for one particular file of the sources
-AC_INIT(ocaml-fetch, 0.2.0, savonet-users@lists.sourceforge.net)
+AC_INIT([ocaml-fetch],[0.2.0],[savonet-users@lists.sourceforge.net])
 
 VERSION=$PACKAGE_VERSION
 AC_MSG_RESULT([configuring $PACKAGE_STRING])
 
-AC_ARG_ENABLE([ldconf],	AC_HELP_STRING([--disable-ldconf],[don't modify the dynamic loader configuration file (default is enable)]),[ac_enable_ldconf=$enableval],[ac_enable_ldconf=yes]
+AC_ARG_ENABLE([ldconf],	AS_HELP_STRING([--disable-ldconf],[don't modify the dynamic loader configuration file (default is enable)]),[ac_enable_ldconf=$enableval],[ac_enable_ldconf=yes]
 )
 if test "$ac_enable_ldconf" = no ; then
 	AC_MSG_RESULT([disabling modification of ld.conf.])
@@ -15,15 +15,15 @@ else
 	OCAMLFIND_LDCONF=""
 fi
 
-AC_ARG_WITH([smbclient], AC_HELP_STRING([--without-smbclient],[do not fetch files via samba]),[ac_with_smbclient=$withval],[ac_with_smbclient=yes])
+AC_ARG_WITH([smbclient], AS_HELP_STRING([--without-smbclient],[do not fetch files via samba]),[ac_with_smbclient=$withval],[ac_with_smbclient=yes])
 
-AC_ARG_WITH([smbclient-dir],AC_HELP_STRING([--with-smbclient-dir=path],[use "path" as the location of ocaml-smbclient (autodetected by default)]))
+AC_ARG_WITH([smbclient-dir],AS_HELP_STRING([--with-smbclient-dir=path],[use "path" as the location of ocaml-smbclient (autodetected by default)]))
 
-AC_ARG_WITH([ftp],AC_HELP_STRING([--without-ftp],[do not fetch files via ftp]),[ac_with_ftp=$withval],[ac_with_ftp=yes])
+AC_ARG_WITH([ftp],AS_HELP_STRING([--without-ftp],[do not fetch files via ftp]),[ac_with_ftp=$withval],[ac_with_ftp=yes])
 
-AC_ARG_WITH([ftp-dir],AC_HELP_STRING([--with-ftp-dir=path],[use "path" as the location of ocaml-ftp (autodetected by default)]))
+AC_ARG_WITH([ftp-dir],AS_HELP_STRING([--with-ftp-dir=path],[use "path" as the location of ocaml-ftp (autodetected by default)]))
 
-AC_ARG_WITH([http],AC_HELP_STRING([--with-http],[enable fetching of files via htp]),[ac_with_http=$withval],[ac_with_http=yes])
+AC_ARG_WITH([http],AS_HELP_STRING([--with-http],[enable fetching of files via htp]),[ac_with_http=$withval],[ac_with_http=yes])
 
 PROTOCOLS="file"
 
@@ -120,9 +120,7 @@ fi
 AC_PATH_PROG(OCAMLDOC,ocamldoc,no)
 
 AC_ARG_ENABLE([debugging],
-   AC_HELP_STRING(
-      [--enable-debugging],
-      [compile with debugging information (backtrace printing in particular)]))
+   AS_HELP_STRING([--enable-debugging],[compile with debugging information (backtrace printing in particular)]))
 
 if test "x$enable_debugging" = "xyes" ; then
   OCAMLFLAGS="$OCAMLFLAGS -g"

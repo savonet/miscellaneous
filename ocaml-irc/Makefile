@@ -34,7 +34,7 @@ distclean: clean
 dist: doc
 	VERSION="$(VERSION)"; \
 		mkdir $(PROGNAME)-$$VERSION; \
-		cp -r --parents $(DISTFILES) $(PROGNAME)-$$VERSION; \
+		cp -R -L --parents $(DISTFILES) $(PROGNAME)-$$VERSION; \
 		tar zcvf $(PROGNAME)-$$VERSION.tar.gz $(PROGNAME)-$$VERSION; \
 		rm -rf $(PROGNAME)-$$VERSION
 

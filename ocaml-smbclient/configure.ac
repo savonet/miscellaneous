@@ -1,13 +1,13 @@
 # $Id$
 
 # check for one particular file of the sources 
-AC_INIT(ocaml-smbclient, 0.1.0, savonet-users@lists.sourceforge.net)
+AC_INIT([ocaml-smbclient],[0.1.0],[savonet-users@lists.sourceforge.net])
 
 VERSION=$PACKAGE_VERSION
 AC_MSG_RESULT([configuring $PACKAGE_STRING])
 
 OCAMLFIND_LDCONF=""
-AC_ARG_ENABLE([ldconf], AC_HELP_STRING([--disable-ldconf],[don't modify the dynamic loader configuration file (default is enable)]),[ac_enable_ldconf=$enableval],[ac_enable_ldconf=$enableval],[ac_enable_ldconf=yes])
+AC_ARG_ENABLE([ldconf], AS_HELP_STRING([--disable-ldconf],[don't modify the dynamic loader configuration file (default is enable)]),[ac_enable_ldconf=$enableval],[ac_enable_ldconf=$enableval],[ac_enable_ldconf=yes])
 if test "$ac_enable_ldconf" = no ; then
 	AC_MSG_RESULT([disabling modification of ld.conf])
 	OCAMLFIND_LDCONF=dummy
@@ -100,7 +100,7 @@ AC_PROG_CC
 
 AC_CHECK_LIB(smbclient, smbc_init, , AC_MSG_ERROR(Cannot find libsmbclient.))
 
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_TARGET
 
 CPPFLAGS="$CPPFLAGS $(getconf LFS_CFLAGS)"
 

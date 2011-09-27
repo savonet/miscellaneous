@@ -1,8 +1,8 @@
-AC_INIT(ocaml-gnomevfs,0.1)
+AC_INIT([ocaml-gnomevfs],[0.1])
 
 AC_PROG_CC
 
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_TARGET
 
 PKG_PROG_PKG_CONFIG
 

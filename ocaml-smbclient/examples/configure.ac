@@ -1,13 +1,13 @@
 # $Id$
 
 # check for one particular file of the sources 
-AC_INIT(ocaml-smbclient-examples, 0.1.0, savonet-users@lists.sourceforge.net)
+AC_INIT([ocaml-smbclient-examples],[0.1.0],[savonet-users@lists.sourceforge.net])
 
 VERSION=$PACKAGE_VERSION
 AC_MSG_RESULT "configuring $PACKAGE_STRING"
 
 OCAMLFIND_LDCONF=""
-AC_ARG_ENABLE([ldconf], AC_HELP_STRING([--disable-ldconf],[don't modify the dynamic loader configuration file (default is enable)]),[ac_enable_ldconf=$enableval],[ac_enable_ldconf=$enableval],[ac_enable_ldconf=yes])
+AC_ARG_ENABLE([ldconf], AS_HELP_STRING([--disable-ldconf],[don't modify the dynamic loader configuration file (default is enable)]),[ac_enable_ldconf=$enableval],[ac_enable_ldconf=$enableval],[ac_enable_ldconf=yes])
 if test "$ac_enable_ldconf" = no ; then
 	AC_MSG_RESULT "disabling modification of ld.conf"
 	OCAMLFIND_LDCONF=dummy
@@ -108,7 +108,7 @@ if test "$OCAMLFIND" = no ; then
 fi
 
 AC_ARG_WITH([smbclient-dir],
-AC_HELP_STRING([--with-smbclient-dir=path],[look for ocaml smbclient library in "path" (autodetected by default)]))
+AS_HELP_STRING([--with-smbclient-dir=path],[look for ocaml smbclient library in "path" (autodetected by default)]))
 AC_MSG_CHECKING(for ocaml-smbclient)
 if test -z "$with_smbclient_dir" ; then
    I_SMBCLIENT=`$OCAMLFIND query smbclient`
@@ -167,5 +167,6 @@ AC_SUBST(DVIPS)
 AC_SUBST(PS2PDF)
 
 # Finally create the Makefile and samples
-AC_OUTPUT(Makefile.osmbget)
+AC_CONFIG_FILES([Makefile.osmbget])
+AC_OUTPUT
 chmod a-w Makefile.osmbget

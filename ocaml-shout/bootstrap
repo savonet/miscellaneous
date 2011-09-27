@@ -1,7 +1,1 @@
-#!/bin/sh
-
-aclocal
-autoconf
-
-cd examples
-autoconf
+../autoconf/bootstrap
